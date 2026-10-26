@@ -18,7 +18,9 @@ public enum AgentActivity: Equatable, Sendable {
         case .preToolUse:
             return .usingTool(event.toolName ?? "tool")
         case .notification:
-            return .waitingForUser
+            // Claude Code also notifies after a minute of idling; that one isn't a request.
+            let idleReminder = event.message?.lowercased().contains("waiting for your input")
+            return idleReminder == true ? self : .waitingForUser
         case .sessionEnd:
             return .finished
         }

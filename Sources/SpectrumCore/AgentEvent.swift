@@ -20,6 +20,8 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     public let cwd: String?
     public let toolName: String?
     public let transcriptPath: String?
+    /// Text of a `Notification` event, e.g. "Claude needs your permission to use Bash".
+    public let message: String?
 
     enum CodingKeys: String, CodingKey {
         case sessionID = "session_id"
@@ -27,6 +29,7 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         case cwd
         case toolName = "tool_name"
         case transcriptPath = "transcript_path"
+        case message
     }
 
     public static func decode(_ data: Data) throws -> AgentEvent {

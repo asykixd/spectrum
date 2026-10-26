@@ -27,6 +27,10 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     public var characters: CharacterStyle = .clawd
     /// Stops reading the Claude app on battery unless the agents panel is open.
     public var pauseChatsOnBattery = true
+    /// Pulse the island while a Claude Code agent waits for permission or an answer.
+    public var alertWhenNeeded = true
+    /// Flash a checkmark when a task finishes.
+    public var flashWhenDone = true
 
     public init() {}
 
@@ -57,6 +61,12 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         pauseChatsOnBattery =
             try container.decodeIfPresent(Bool.self, forKey: .pauseChatsOnBattery)
             ?? defaults.pauseChatsOnBattery
+        alertWhenNeeded =
+            try container.decodeIfPresent(Bool.self, forKey: .alertWhenNeeded)
+            ?? defaults.alertWhenNeeded
+        flashWhenDone =
+            try container.decodeIfPresent(Bool.self, forKey: .flashWhenDone)
+            ?? defaults.flashWhenDone
     }
 
     public static func load(from defaults: UserDefaults, key: String = "settings")

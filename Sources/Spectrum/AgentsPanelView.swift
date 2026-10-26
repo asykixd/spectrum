@@ -104,6 +104,22 @@ private struct PanelMenu: View {
     let model: NotchModel
 
     var body: some View {
+        if model.renderingStill {
+            icon
+        } else {
+            menu
+        }
+    }
+
+    private var icon: some View {
+        Image(systemName: "gearshape.fill")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.7))
+            .frame(width: 22, height: 22)
+            .contentShape(Rectangle())
+    }
+
+    private var menu: some View {
         Menu {
             Button("Settings…", action: model.onOpenSettings)
             Divider()
@@ -115,11 +131,7 @@ private struct PanelMenu: View {
             Divider()
             Button("Quit Spectrum") { NSApp.terminate(nil) }
         } label: {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.7))
-                .frame(width: 22, height: 22)
-                .contentShape(Rectangle())
+            icon
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)

@@ -2,10 +2,23 @@ import AppKit
 import SpectrumCore
 import SwiftUI
 
-/// `Spectrum preview <dir>`: renders every notch mode with sample data to PNGs, so the UI can
-/// be reviewed without music playing or agents running.
+/// `Spectrum preview <dir>`: renders every notch state with made-up sample data to PNGs, for
+/// reviewing the UI and for the README. Nothing from the user's own sessions is used.
 @MainActor
 enum PreviewRenderer {
+    private struct Scene {
+        let name: String
+        var tab: AgentsTab = .sessions
+        var sessions: [AgentSession] = []
+        var music = false
+        var hovering = false
+        var agentsOpen = false
+        var conversation = false
+        var hour = 14
+        /// Activities the sessions had a moment ago, to trigger the done checkmark.
+        var before: [AgentSession]?
+    }
+
     static func render(to directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let screen = CGRect(x: 0, y: 0, width: 1512, height: 982)
@@ -14,94 +27,135 @@ enum PreviewRenderer {
             topLeftArea: CGRect(x: 0, y: 950, width: 663, height: 32),
             topRightArea: CGRect(x: 849, y: 950, width: 663, height: 32))
 
-        let scenes: [(String, NotchMode, AgentsTab)] = [
-            ("compact", .compact, .sessions),
-            ("expanded", .expanded, .sessions),
-            ("agents-sessions", .agents, .sessions),
-            ("agents-conversation", .agents, .sessions),
-            ("agents-office", .agents, .office),
+        let scenes = [
+            Scene(name: "compact", music: true),
+            Scene(name: "expanded", music: true, hovering: true),
+            Scene(name: "attention", sessions: [agent("b", "billing-api", .waitingForUser)]),
+            Scene(
+                name: "done", sessions: [agent("w", "weather-app", .idle)],
+                before: [agent("w", "weather-app", .thinking)]),
+            Scene(name: "agents-sessions", sessions: listSessions, agentsOpen: true),
+            Scene(
+                name: "agents-conversation", sessions: listSessions, agentsOpen: true,
+                conversation: true),
+            Scene(name: "agents-office", tab: .office, sessions: officeSessions, agentsOpen: true),
+            Scene(
+                name: "agents-office-night", tab: .office, sessions: officeSessions,
+                agentsOpen: true, hour: 23),
         ]
-        for (name, mode, tab) in scenes {
-            let model = sampleModel(geometry: geometry)
-            model.tab = tab
-            if name == "agents-conversation" {
-                model.selectedSessionID = "a1"
+        for scene in scenes {
+            let model = NotchModel(geometry: geometry)
+            model.renderingStill = true
+            model.hooksInstalled = true
+            model.tab = scene.tab
+            model.clockOverride = Calendar.current.date(
+                bySettingHour: scene.hour, minute: 10, second: 0, of: Date())
+            if scene.music {
+                model.artwork = sampleArtwork
+                model.accent = Color(hex: 0xF2A65A)
+                model.nowPlaying = NowPlaying(
+                    title: "Midnight Drive", artist: "Neon Coast, Lumen", duration: 214,
+                    elapsed: 71, sampledAt: Date(), isPlaying: true,
+                    bundleID: "com.spotify.client")
+            }
+            if let before = scene.before { model.codeSessions = before }
+            model.chatSessions = scene.sessions.filter { $0.kind == .chat }
+            model.codeSessions = scene.sessions.filter { $0.kind == .code }
+            if scene.conversation {
+                model.selectedSessionID = "a"
                 model.transcript = sampleTranscript
             }
-            switch mode {
-            case .agents: model.agentsOpen = true
-            case .expanded: model.isHovering = true
-            case .compact, .hidden: break
-            }
+            if scene.hovering { model.isHovering = true }
+            if scene.agentsOpen { model.agentsOpen = true }
+
             let frame = NotchLayout.panelFrame(for: geometry)
             let view = NotchRootView(model: model)
                 .frame(width: frame.width, height: frame.height)
-                .background(Color(hex: 0x3B4252))
-            let renderer = ImageRenderer(content: view)
-            renderer.scale = 2
-            guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
-                let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
-            else {
-                throw CocoaError(.fileWriteUnknown)
-            }
-            let url = directory.appending(path: "\(name).png")
-            try png.write(to: url)
-            print(url.path)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: 0x3A2E6E), Color(hex: 0x1F4E79), Color(hex: 0x0F2A3F)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing))
+            try write(view, to: directory.appending(path: "\(scene.name).png"))
         }
-        try renderSettings(model: sampleModel(geometry: geometry), to: directory)
     }
 
-    private static func renderSettings(model: NotchModel, to directory: URL) throws {
-        let renderer = ImageRenderer(content: SettingsView(model: model).frame(height: 560))
+    /// Made-up cover art: a synthwave sunset.
+    private static var sampleArtwork: NSImage? {
+        let cover = ZStack {
+            LinearGradient(
+                colors: [Color(hex: 0x2B1055), Color(hex: 0xD53A9D), Color(hex: 0xF9A03F)],
+                startPoint: .top, endPoint: .bottom)
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color(hex: 0xFFE29A), Color(hex: 0xFF6B6B)], startPoint: .top,
+                        endPoint: .bottom)
+                )
+                .frame(width: 120, height: 120)
+                .offset(y: 30)
+            VStack(spacing: 6) {
+                ForEach(0..<5) { row in
+                    Rectangle().fill(Color(hex: 0x2B1055)).frame(height: CGFloat(2 + row))
+                }
+            }
+            .offset(y: 70)
+        }
+        .frame(width: 240, height: 240)
+        .clipped()
+        let renderer = ImageRenderer(content: cover)
+        renderer.scale = 2
+        return renderer.nsImage
+    }
+
+    private static func write(_ view: some View, to url: URL) throws {
+        let renderer = ImageRenderer(content: view)
         renderer.scale = 2
         guard let tiff = renderer.nsImage?.tiffRepresentation,
             let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
         else { throw CocoaError(.fileWriteUnknown) }
-        let url = directory.appending(path: "settings.png")
         try png.write(to: url)
         print(url.path)
     }
 
+    private static func agent(
+        _ id: String, _ project: String, _ activity: AgentActivity,
+        kind: AgentSession.Kind = .code, minutesAgo: Double = 3
+    ) -> AgentSession {
+        let now = Date()
+        return AgentSession(
+            id: id, kind: kind, title: kind == .chat ? project : nil,
+            cwd: kind == .code ? "~/code/\(project)" : nil, transcriptPath: "/dev/null",
+            activity: activity, startedAt: now.addingTimeInterval(-minutesAgo * 60),
+            updatedAt: now.addingTimeInterval(-minutesAgo * 20))
+    }
+
+    /// Small enough to fit the list without scrolling.
+    private static let listSessions = [
+        agent("a", "weather-app", .usingTool("Bash")),
+        agent("b", "billing-api", .waitingForUser, minutesAgo: 1),
+        agent("c", "Trip ideas", .responding, kind: .chat),
+        agent("d", "dotfiles", .idle, minutesAgo: 12),
+    ]
+
+    private static let officeSessions = [
+        agent("a", "weather-app", .usingTool("Bash")),
+        agent("b", "billing-api", .waitingForUser),
+        agent("e", "landing-page", .thinking),
+        agent("f", "ml-pipeline", .usingTool("Edit")),
+        agent("c", "Trip ideas", .responding, kind: .chat),
+        agent("d", "dotfiles", .idle),
+        agent("g", "Recipes", .idle, kind: .chat),
+    ]
+
     private static let sampleTranscript: [TranscriptMessage] = [
-        .init(id: "1", role: .user, text: "Make the waveform follow the artwork color"),
-        .init(id: "2", role: .assistant, text: "I'll sample the artwork's average color."),
-        .init(id: "3", role: .tool, text: "Read: Sources/Spectrum/MusicViews.swift"),
-        .init(id: "4", role: .tool, text: "Edit: Sources/Spectrum/NowPlayingMonitor.swift"),
+        .init(id: "1", role: .user, text: "Add a 7-day forecast screen"),
+        .init(
+            id: "2", role: .assistant, text: "I'll add a ForecastView fed by the daily endpoint."),
+        .init(id: "3", role: .tool, text: "Read: Sources/Weather/API.swift"),
+        .init(id: "4", role: .tool, text: "Write: Sources/Weather/ForecastView.swift"),
         .init(id: "5", role: .tool, text: "Bash: swift test"),
         .init(
             id: "6", role: .assistant,
-            text: "Done: the bars now use a brightened average of the cover. All 54 tests pass."),
+            text: "Done: the forecast screen shows 7 days with highs, lows and icons. Tests pass."),
     ]
-
-    private static func sampleModel(geometry: NotchGeometry) -> NotchModel {
-        let model = NotchModel(geometry: geometry)
-        model.hooksInstalled = true
-        model.accent = Color(hex: 0xF2A65A)
-        model.nowPlaying = NowPlaying(
-            title: "высокие вещи", artist: "Sqwore", duration: 96, elapsed: 28,
-            sampledAt: Date(), isPlaying: true, bundleID: "com.spotify.client")
-        let now = Date()
-        let samples: [(String, String, AgentActivity)] = [
-            ("a1", "/Users/me/code/spectrum", .usingTool("Bash")),
-            ("b2", "/Users/me/code/api-server", .waitingForUser),
-            ("c3", "/Users/me/code/landing", .thinking),
-            ("d4", "/Users/me/code/dotfiles", .idle),
-            ("f6", "/Users/me/code/blog", .idle),
-            ("e5", "/Users/me/code/ml-pipeline", .usingTool("Edit")),
-        ]
-        model.codeSessions = samples.enumerated().map { index, sample in
-            AgentSession(
-                id: sample.0, cwd: sample.1, transcriptPath: "/tmp/x.jsonl", activity: sample.2,
-                startedAt: now.addingTimeInterval(Double(-600 + index * 60)),
-                updatedAt: now.addingTimeInterval(Double(-index * 17)))
-        }
-        model.chatSessions = [
-            AgentSession(
-                id: "chat", kind: .chat, title: "Trip to Tbilisi", cwd: nil,
-                activity: .responding, startedAt: now, updatedAt: now)
-        ]
-        // Mode only advances from compact to expanded, as it would with a real pointer.
-        model.isHovering = false
-        return model
-    }
 }

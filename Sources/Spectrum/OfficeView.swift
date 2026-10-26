@@ -13,7 +13,8 @@ struct OfficeView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 8)) { timeline in
             Canvas { context, size in
                 OfficeScene(
-                    layout: layout, date: timeline.date, hoveredID: model.officeHoverID,
+                    layout: layout, date: model.clockOverride ?? timeline.date,
+                    hoveredID: model.officeHoverID,
                     style: model.settings.characters
                 ).draw(in: context, size: size)
             }

@@ -49,11 +49,10 @@ struct ConversationView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 6) {
-                            ForEach(messages) { MessageBubble(message: $0) }
-                        }
-                        .padding(.vertical, 4)
+                    // A short conversation sits still; a long one scrolls, pinned to the bottom.
+                    ViewThatFits(in: .vertical) {
+                        bubbles.frame(maxHeight: .infinity, alignment: .top)
+                        ScrollView { bubbles }
                     }
                     .scrollIndicators(.never)
                     .onAppear { proxy.scrollTo(messages.last?.id, anchor: .bottom) }
@@ -69,6 +68,13 @@ struct ConversationView: View {
         }
     }
 
+    private var bubbles: some View {
+        VStack(spacing: 6) {
+            ForEach(messages) { MessageBubble(message: $0) }
+        }
+        .padding(.vertical, 4)
+    }
+
     private var replyBar: some View {
         let canReply = AgentReply.canReply(to: session) && !replying
         let placeholder =
@@ -77,13 +83,20 @@ struct ConversationView: View {
             : canReply ? "Reply to \(session.projectName)…" : "Claude is busy; reply when it stops"
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                TextField(placeholder, text: $model.replyDraft, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white)
-                    .lineLimit(1...3)
-                    .disabled(!canReply)
-                    .onSubmit(send)
+                if model.renderingStill {
+                    Text(placeholder)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.4))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    TextField(placeholder, text: $model.replyDraft, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white)
+                        .lineLimit(1...3)
+                        .disabled(!canReply)
+                        .onSubmit(send)
+                }
                 Button(action: send) {
                     Image(systemName: replying ? "hourglass" : "arrow.up")
                         .font(.system(size: 11, weight: .bold))

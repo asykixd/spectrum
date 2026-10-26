@@ -96,7 +96,10 @@ struct ExpandedMusicView: View {
                             }
                             .lineLimit(1)
                             Spacer(minLength: 8)
-                            PlayerIcon(bundleID: track.bundleID)
+                            // ImageRenderer washes out the whole still when it draws an app icon.
+                            if !model.renderingStill {
+                                PlayerIcon(bundleID: track.bundleID)
+                            }
                         }
                         ProgressRow(track: track, accent: model.accent)
                         Controls(isPlaying: track.isPlaying, send: model.perform)
@@ -113,12 +116,21 @@ private struct PlayerIcon: View {
     let bundleID: String
 
     var body: some View {
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+        if let icon {
+            Image(decorative: icon, scale: 2)
                 .resizable()
                 .frame(width: 18, height: 18)
                 .opacity(0.9)
         }
+    }
+
+    /// App icons hold many representations; one small bitmap is all this needs.
+    private var icon: CGImage? {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+        else { return nil }
+        var rect = CGRect(x: 0, y: 0, width: 36, height: 36)
+        return NSWorkspace.shared.icon(forFile: url.path)
+            .cgImage(forProposedRect: &rect, context: nil, hints: nil)
     }
 }
 

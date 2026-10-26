@@ -15,7 +15,9 @@ struct NotchRootView: View {
         ZStack(alignment: .top) {
             shape.fill(.black)
             content
-                .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .top)))
+                .transition(
+                    model.renderingStill
+                        ? .identity : .opacity.combined(with: .scale(scale: 0.92, anchor: .top)))
         }
         .frame(width: size.width, height: size.height)
         .clipShape(shape)
@@ -25,7 +27,10 @@ struct NotchRootView: View {
         // Without a hardware notch the hidden island would be a visible black pill.
         .opacity(mode == .hidden && !model.geometry.hasHardwareNotch ? 0 : 1)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .animation(.spring(response: 0.42, dampingFraction: 0.8), value: mode)
+        // Stills must show the settled state, not the first frame of a transition.
+        .animation(
+            model.renderingStill ? nil : .spring(response: 0.42, dampingFraction: 0.8),
+            value: mode)
     }
 
     @ViewBuilder private var content: some View {
@@ -38,6 +43,8 @@ struct NotchRootView: View {
             ExpandedMusicView(model: model)
         case .agents:
             AgentsPanelView(model: model)
+        case .attention, .done:
+            SignalView(model: model)
         }
     }
 }

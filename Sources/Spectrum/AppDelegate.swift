@@ -153,7 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if dismissal.update(isOpen: open, isInside: hovering) {
             model.agentsOpen = false
         }
-        let interactive = model.mode == .expanded || model.mode == .agents
+        let interactive = [.expanded, .agents, .attention].contains(model.mode)
         if panel.ignoresMouseEvents == interactive { panel.ignoresMouseEvents = !interactive }
     }
 

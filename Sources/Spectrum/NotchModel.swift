@@ -55,7 +55,15 @@ final class NotchModel {
     /// Agent under the pointer in the office.
     var officeHoverID: String?
 
-    var agentsOpen = false { didSet { updateMode() } }
+    var agentsOpen = false {
+        didSet {
+            if agentsOpen { attention.acknowledge() }
+            updateMode()
+        }
+    }
+    @ObservationIgnored private var attention = AttentionTracker()
+    /// What the island is calling the user about, if anything.
+    private(set) var signal: AttentionTracker.Signal?
     var isHovering = false { didSet { updateMode() } }
     var tab: AgentsTab = .sessions
     var hooksInstalled = false
@@ -70,6 +78,11 @@ final class NotchModel {
     @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
     @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
+    /// Fixed time for the office's day/night cycle; only the preview command sets it.
+    @ObservationIgnored var clockOverride: Date?
+    /// Set by the preview command: `ImageRenderer` can't draw AppKit-backed controls such as
+    /// menus and text fields, so views swap in static stand-ins.
+    @ObservationIgnored var renderingStill = false
 
     init(geometry: NotchGeometry, settings: SpectrumSettings = SpectrumSettings()) {
         self.geometry = geometry
@@ -110,16 +123,44 @@ final class NotchModel {
         let chats = settings.showClaudeChats ? chatSessions : []
         let visible = dismissals.visible(chats + codeSessions)
         if visible != sessions { sessions = visible }
+        attention.update(visible, now: Date())
+        if agentsOpen { attention.acknowledge() }
+        if let until = attention.doneUntil, until > Date() {
+            // Re-evaluate once the checkmark has had its moment.
+            DispatchQueue.main.asyncAfter(deadline: .now() + until.timeIntervalSinceNow + 0.05) {
+                [weak self] in
+                self?.updateMode()
+            }
+        }
+        updateMode()
+    }
+
+    /// Clicking the pulsing island opens the panel on the agent that asked.
+    func answerAttention() {
+        if case .needsYou(let session) = signal {
+            tab = .sessions
+            selectedSessionID = session.id
+        }
+        agentsOpen = true
     }
 
     private func updateMode() {
         let track = settings.showMusic ? nowPlaying : nil
+        var current = attention.signal(at: Date())
+        switch current {
+        case .needsYou where !settings.alertWhenNeeded, .done where !settings.flashWhenDone:
+            current = nil
+        default:
+            break
+        }
+        if current != signal { signal = current }
         let next = NotchMode.resolve(
             current: mode,
             isPlaying: track?.isPlaying ?? false,
             hasTrack: track != nil,
             isHovering: isHovering,
-            agentsOpen: agentsOpen
+            agentsOpen: agentsOpen,
+            signal: current
         )
         guard next != mode else { return }
         if settings.haptics, let cue = HapticCue.forTransition(from: mode, to: next) {
@@ -134,6 +175,8 @@ final class NotchModel {
 enum NotchLayout {
     static let expandedSize = CGSize(width: 440, height: 128)
     static let agentsSize = CGSize(width: 680, height: 340)
+    /// Each ear is wide enough for an agent's name next to the hardware notch.
+    static let signalEarWidth: CGFloat = 110
 
     static func size(for mode: NotchMode, geometry: NotchGeometry) -> CGSize {
         let notch = geometry.notch.size
@@ -145,12 +188,14 @@ enum NotchLayout {
                 width: expandedSize.width, height: notch.height + expandedSize.height)
         case .agents:
             return CGSize(width: agentsSize.width, height: notch.height + agentsSize.height)
+        case .attention, .done:
+            return CGSize(width: notch.width + signalEarWidth * 2, height: notch.height)
         }
     }
 
     static func bottomRadius(for mode: NotchMode) -> CGFloat {
         switch mode {
-        case .hidden, .compact: 10
+        case .hidden, .compact, .attention, .done: 10
         case .expanded: 28
         case .agents: 32
         }

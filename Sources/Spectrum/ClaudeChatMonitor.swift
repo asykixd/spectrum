@@ -107,7 +107,8 @@ final class ClaudeChatMonitor {
     }
 
     private func refresh() {
-        guard !reading, AXIsProcessTrusted() else { return }
+        guard !reading, model.settings.showClaudeChats, AXIsProcessTrusted() else { return }
+        tracker.retention = TimeInterval(model.settings.chatRetentionMinutes * 60)
         reading = true
         Task {
             defer { reading = false }

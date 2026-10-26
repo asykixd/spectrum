@@ -4,9 +4,6 @@ import SpectrumCore
 /// Receives Claude Code hook events and keeps the model's session list current.
 @MainActor
 final class AgentMonitor {
-    /// Sessions killed without a SessionEnd (closed terminal) disappear after this long.
-    private static let staleAfter: TimeInterval = 60 * 60
-
     private let model: NotchModel
     private let server = AgentSocketServer(path: SpectrumPaths.agentSocket.path)
     private var store = SessionStore()
@@ -27,7 +24,9 @@ final class AgentMonitor {
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.store.prune(inactiveFor: Self.staleAfter, now: Date())
+                // Sessions killed without a SessionEnd (closed terminal) disappear eventually.
+                let staleAfter = TimeInterval(self.model.settings.staleAgentMinutes * 60)
+                self.store.prune(inactiveFor: staleAfter, now: Date())
                 self.publish()
             }
         }

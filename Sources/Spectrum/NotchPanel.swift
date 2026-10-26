@@ -3,16 +3,9 @@ import SpectrumCore
 
 /// Borderless panel pinned over the notch, above the menu bar.
 final class NotchPanel: NSPanel {
-    let geometry: NotchGeometry
-
-    init(screen: NSScreen) {
-        geometry = NotchGeometry(
-            screenFrame: screen.frame,
-            topLeftArea: screen.auxiliaryTopLeftArea,
-            topRightArea: screen.auxiliaryTopRightArea
-        )
+    init(frame: CGRect) {
         super.init(
-            contentRect: geometry.panel,
+            contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -22,6 +15,11 @@ final class NotchPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
+        ignoresMouseEvents = true
+        isMovable = false
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
     }
+
+    // Lets SwiftUI controls (tabs, scrolling) work without activating the app.
+    override var canBecomeKey: Bool { true }
 }

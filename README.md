@@ -34,8 +34,10 @@ pixel-art office where every session sits at its own desk.
 | Force Touch haptics on MacBook trackpads when the island opens and closes | Done |
 | Two-finger swipe across the player: left for next track, right for previous | Done |
 | Double-tap <kbd>⌘</kbd> to open the agents panel; moving the pointer out, <kbd>Esc</kbd> or a click outside closes it | Done |
-| Sessions tab: every Claude Code session, what it is doing, who is waiting for you | Done |
-| Office tab: pixel-art office, one animated character per session, desk screen shows the activity | Done |
+| Sessions tab grouped into Claude Code, Chats and AFK; remove a session with ✕ | Done |
+| Click a Claude Code session to read its recent conversation and tool calls | Done |
+| Office tab: desks for working agents, a meeting room for chats, a sofa for AFK agents | Done |
+| Settings: shortcut (⌘⌘ / ⌥⌥ / ⌃⌃), music, chats and their retention, haptics, hooks | Done |
 | Claude app chats from the last 15 minutes: you and Claude at a table — thinking, answering, your turn | Done |
 | One-click Claude Code hook installer that keeps your existing hooks | Done |
 | Signed `.app` bundle | Planned |
@@ -74,7 +76,10 @@ Then:
   tap as the island opens and closes.
 - Chat in the Claude desktop app: the chat shows up next to your Claude Code sessions for 15
   minutes after you last had it open.
-- Double-tap <kbd>⌘</kbd> to see your agents. Switch between **Sessions** and **Office**.
+- Double-tap <kbd>⌘</kbd> to see your agents. Switch between **Sessions** and **Office**. Click a
+  Claude Code session to read its conversation; click a chat to jump to the Claude app; hover a
+  row and press ✕ to hide it until it does something new.
+- The gear in the panel opens Settings, installs or removes the hooks and quits Spectrum.
 - Nothing playing and the panel closed: Spectrum is invisible.
 
 Spectrum runs as an accessory app with no Dock icon. To quit: `pkill -f Spectrum`.

@@ -25,10 +25,10 @@ struct OfficeScene {
     /// Glass wall between the open space and the meeting room / lounge.
     static let partitionX = 101.0
     static let meetingSlots = [106.0, 132.0]
-    static let meetingTop = 42.0
+    static let meetingTop = 40.0
     static let meetingWidth = 24.0
     static let loungeY = 54.0
-    static let sofaSeats = [109.0, 121.0, 133.0, 145.0]
+    static let sofaSeats = [109.0, 121.0, 133.0]
 
     let sessions: [AgentSession]
     let date: Date
@@ -89,8 +89,8 @@ struct OfficeScene {
     private func drawLounge(_ canvas: PixelCanvas, sessions: [AgentSession]) {
         let y = Self.loungeY
         // Sofa back, then the agents sinking into it, then the seat cushions over their laps.
-        canvas.fill(106, y + 4, 50, 7, Color(hex: 0x4E3F7A))
-        canvas.fill(106, y + 4, 50, 1, Color(hex: 0x6650A0))
+        canvas.fill(106, y + 4, 40, 7, Color(hex: 0x4E3F7A))
+        canvas.fill(106, y + 4, 40, 1, Color(hex: 0x6650A0))
         for (index, x) in Self.sofaSeats.enumerated() where index < sessions.count {
             let session = sessions[index]
             let look = AgentLook(seed: session.appearanceSeed)
@@ -104,13 +104,23 @@ struct OfficeScene {
             label(
                 canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 21, size: 1.9)
         }
-        canvas.fill(105, y + 11, 52, 4, Color(hex: 0x6E5BA6))
-        canvas.fill(105, y + 11, 52, 1, Color(hex: 0x8470C0))
+        canvas.fill(105, y + 11, 42, 4, Color(hex: 0x6E5BA6))
+        canvas.fill(105, y + 11, 42, 1, Color(hex: 0x8470C0))
         canvas.fill(103, y + 7, 3, 8, Color(hex: 0x5A4890))
-        canvas.fill(156, y + 7, 3, 8, Color(hex: 0x5A4890))
+        canvas.fill(146, y + 7, 3, 8, Color(hex: 0x5A4890))
         canvas.fill(106, y + 15, 2, 2, Color(hex: 0x2E2440))
-        canvas.fill(154, y + 15, 2, 2, Color(hex: 0x2E2440))
-        canvas.fill(104, y + 17, 54, 0.7, .black.opacity(0.25))
+        canvas.fill(144, y + 15, 2, 2, Color(hex: 0x2E2440))
+        canvas.fill(104, y + 17, 46, 0.7, .black.opacity(0.25))
+
+        // A plant at the end of the sofa.
+        let sway = sin(time * 1.2) > 0 ? 0.0 : 0.5
+        canvas.sprite(
+            ["..l.l...", ".lllll.l", "llllllll", ".llDlll.", "..lDll..", "...D...."],
+            x: 151 + sway, y: y + 4,
+            palette: ["l": Color(hex: 0x3FA34D), "D": Color(hex: 0x2E7D3A)])
+        canvas.fill(151, y + 10, 8, 1, Color(hex: 0xD9804F))
+        canvas.fill(152, y + 11, 6, 5, Color(hex: 0xC46A3F))
+        canvas.fill(152, y + 16, 6, 0.6, .black.opacity(0.25))
         if sessions.count > Self.sofaSeats.count {
             label(
                 canvas, "+\(sessions.count - Self.sofaSeats.count) AFK", x: 150, y: y + 1,
@@ -256,18 +266,9 @@ struct OfficeScene {
         canvas.fill(x, top + 27, 2, 1, Color(hex: 0x8A9BB0))
         canvas.fill(x + 2, top + 28, Self.columns - x - 2, 1, Color(hex: 0xBFE3F5, opacity: 0.35))
 
-        label(canvas, "MEETING", x: x + 11, y: top + 3, size: 1.8, opacity: 0.45)
-        label(canvas, "LOUNGE", x: x + 10, y: Self.loungeY + 0.5, size: 1.8, opacity: 0.45)
-
-        // A plant guards the corner of the open space.
-        let sway = sin(time * 1.2) > 0 ? 0.0 : 0.5
-        canvas.sprite(
-            ["..l.l...", ".lllll.l", "llllllll", ".llDlll.", "..lDll..", "...D...."],
-            x: x - 10 + sway, y: 25,
-            palette: ["l": Color(hex: 0x3FA34D), "D": Color(hex: 0x2E7D3A)])
-        canvas.fill(x - 10, 31, 8, 1, Color(hex: 0xD9804F))
-        canvas.fill(x - 9, 32, 6, 5, Color(hex: 0xC46A3F))
-        canvas.fill(x - 9, 37, 6, 0.6, .black.opacity(0.25))
+        // Door sign for the meeting room, under the window.
+        canvas.fill(x + 26, top - 4, 22, 3, Color(hex: 0xE8E4D8))
+        label(canvas, "MEETING", x: x + 37, y: top - 2.5, size: 1.8, opacity: 1, color: .black)
     }
 
     private func drawEmptyDesk(_ canvas: PixelCanvas, x: Double, top: Double) {
@@ -485,12 +486,12 @@ struct OfficeScene {
 
     private func label(
         _ canvas: PixelCanvas, _ text: String, x: Double, y: Double, size: Double = 2.4,
-        opacity: Double = 0.85
+        opacity: Double = 0.85, color: Color = .white
     ) {
         canvas.context.draw(
             Text(text)
                 .font(.system(size: size * canvas.pixel, weight: .medium, design: .monospaced))
-                .foregroundStyle(.white.opacity(opacity)),
+                .foregroundStyle(color.opacity(opacity)),
             at: canvas.point(x, y))
     }
 }

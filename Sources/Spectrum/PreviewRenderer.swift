@@ -43,6 +43,8 @@ enum PreviewRenderer {
                 name: "agents-office-night", tab: .office, sessions: officeSessions,
                 agentsOpen: true, hour: 23),
         ]
+        try write(
+            AppIcon().frame(width: 512, height: 512), to: directory.appending(path: "AppIcon.png"))
         for scene in scenes {
             let model = NotchModel(geometry: geometry)
             model.renderingStill = true

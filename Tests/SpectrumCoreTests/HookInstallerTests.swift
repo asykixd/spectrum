@@ -72,3 +72,17 @@ private let command = HookInstaller.command(executablePath: "/Apps/Spectrum")
         try HookInstaller.install(executablePath: "/x", settingsURL: url)
     }
 }
+
+@Test func detectsHooksFromAnotherCopy() throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let url = directory.appending(path: "settings.json")
+
+    try HookInstaller.install(executablePath: "/dev/build/Spectrum", settingsURL: url)
+
+    #expect(
+        HookInstaller.pointsElsewhere(
+            settingsURL: url, executablePath: "/Applications/Spectrum.app/Contents/MacOS/Spectrum"))
+    #expect(!HookInstaller.pointsElsewhere(settingsURL: url, executablePath: "/dev/build/Spectrum"))
+}

@@ -76,6 +76,24 @@ public enum HookInstaller {
         try writeSettings(removing(from: settings), to: settingsURL)
     }
 
+    /// True when Spectrum's hooks exist but call a different executable, e.g. after moving from
+    /// a development build to the installed app.
+    public static func pointsElsewhere(settingsURL: URL, executablePath: String) -> Bool {
+        guard let data = try? Data(contentsOf: settingsURL) else { return false }
+        let text = String(decoding: data, as: UTF8.self)
+        guard text.contains(marker) else { return false }
+        // JSON escapes the quotes and slashes differently, so compare through a decode.
+        guard let settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let hooks = settings["hooks"] as? [String: Any]
+        else { return false }
+        let expected = command(executablePath: executablePath)
+        let commands = hooks.values.compactMap { $0 as? [[String: Any]] }.joined()
+            .compactMap { $0["hooks"] as? [[String: Any]] }.joined()
+            .compactMap { $0["command"] as? String }
+            .filter { $0.hasSuffix(marker) }
+        return commands.contains { $0 != expected }
+    }
+
     public static func isInstalled(settingsURL: URL) -> Bool {
         guard let data = try? Data(contentsOf: settingsURL) else { return false }
         return String(decoding: data, as: UTF8.self).contains(marker)

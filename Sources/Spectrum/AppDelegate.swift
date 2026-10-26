@@ -35,6 +35,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         let model = NotchModel(geometry: geometry, settings: .load(from: .standard))
         model.hooksInstalled = HookInstaller.isInstalled(settingsURL: SpectrumPaths.claudeSettings)
+        if let path = Bundle.main.executableURL?.resolvingSymlinksInPath().path,
+            HookInstaller.pointsElsewhere(
+                settingsURL: SpectrumPaths.claudeSettings, executablePath: path)
+        {
+            // The user installed hooks from another copy of Spectrum; follow this one.
+            do {
+                try HookInstaller.install(
+                    executablePath: path, settingsURL: SpectrumPaths.claudeSettings)
+            } catch {
+                log.error("updating hook path failed: \(error)")
+            }
+        }
         model.onInstallHooks = { [weak model] in
             guard let path = Bundle.main.executableURL?.resolvingSymlinksInPath().path else {
                 return

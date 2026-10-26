@@ -1,7 +1,7 @@
 import SpectrumCore
 import SwiftUI
 
-/// Opened with ⌘⌘: who is doing what, as a list or as an office.
+/// Opened with a double tap: who is doing what, as a list or as an office.
 struct AgentsPanelView: View {
     let model: NotchModel
 
@@ -15,8 +15,11 @@ struct AgentsPanelView: View {
                 TabSwitcher(tab: model.tab, count: model.sessions.count, select: model.select)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer().frame(width: model.geometry.notch.width)
-                StatusSummary(working: working, waiting: waiting)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                HStack(spacing: 12) {
+                    StatusSummary(working: working, waiting: waiting)
+                    PanelMenu(model: model)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.horizontal, 18)
             .frame(height: max(model.geometry.notch.height, 32))
@@ -24,9 +27,13 @@ struct AgentsPanelView: View {
             Group {
                 switch model.tab {
                 case .sessions:
-                    SessionsListView(
-                        sessions: model.sessions, hooksInstalled: model.hooksInstalled,
-                        installHooks: model.onInstallHooks)
+                    if let session = model.selectedSession {
+                        ConversationView(
+                            session: session, messages: model.transcript,
+                            close: { model.selectedSessionID = nil })
+                    } else {
+                        SessionsListView(model: model)
+                    }
                 case .office:
                     OfficeView(sessions: model.sessions)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -94,26 +101,82 @@ private struct StatusSummary: View {
     }
 }
 
-struct SessionsListView: View {
-    let sessions: [AgentSession]
-    let hooksInstalled: Bool
-    let installHooks: () -> Void
+/// Settings, hooks and quitting: Spectrum has no Dock icon or menu bar item.
+private struct PanelMenu: View {
+    let model: NotchModel
 
     var body: some View {
-        if sessions.isEmpty {
+        Menu {
+            Button("Settings…", action: model.onOpenSettings)
+            Divider()
+            if model.hooksInstalled {
+                Button("Remove Claude Code Hooks", action: model.onRemoveHooks)
+            } else {
+                Button("Install Claude Code Hooks", action: model.onInstallHooks)
+            }
+            Divider()
+            Button("Quit Spectrum") { NSApp.terminate(nil) }
+        } label: {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+}
+
+struct SessionsListView: View {
+    let model: NotchModel
+
+    private var groups: SessionGroups { SessionGroups(model.sessions) }
+
+    var body: some View {
+        if model.sessions.isEmpty {
             emptyState
         } else {
             // Scroll only when the rows don't fit, so a short list sits still like a widget.
             ViewThatFits(in: .vertical) {
-                rows.frame(maxHeight: .infinity, alignment: .top)
-                ScrollView { rows }.scrollIndicators(.never)
+                sections.frame(maxHeight: .infinity, alignment: .top)
+                ScrollView { sections }.scrollIndicators(.never)
             }
         }
     }
 
-    private var rows: some View {
-        VStack(spacing: 6) {
-            ForEach(sessions) { SessionRow(session: $0) }
+    private var sections: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            section("Claude Code", symbol: "terminal", sessions: groups.code)
+            section("Chats", symbol: "bubble.left.and.bubble.right", sessions: groups.chats)
+            section("AFK", symbol: "moon.zzz", sessions: groups.afk)
+        }
+    }
+
+    @ViewBuilder
+    private func section(_ title: String, symbol: String, sessions: [AgentSession]) -> some View {
+        if !sessions.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("\(title) · \(sessions.count)", systemImage: symbol)
+                    .font(.system(size: 10, weight: .semibold))
+                    .textCase(.uppercase)
+                    .foregroundStyle(.white.opacity(0.4))
+                    .padding(.leading, 4)
+                ForEach(sessions) { session in
+                    SessionRow(
+                        session: session, hovering: model.hoveredSessionID == session.id,
+                        hover: { inside in
+                            if inside {
+                                model.hoveredSessionID = session.id
+                            } else if model.hoveredSessionID == session.id {
+                                model.hoveredSessionID = nil
+                            }
+                        },
+                        open: { model.open(session) },
+                        dismiss: { withAnimation(.snappy) { model.dismiss(session) } })
+                }
+            }
         }
     }
 
@@ -125,15 +188,15 @@ struct SessionsListView: View {
             Text("No agents running")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white)
-            if hooksInstalled {
-                Text("Start a Claude Code session and it shows up here.")
+            if model.hooksInstalled {
+                Text("Start a Claude Code session or a chat in the Claude app.")
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.55))
             } else {
                 Text("Spectrum listens to Claude Code through hooks.")
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.55))
-                Button(action: installHooks) {
+                Button(action: model.onInstallHooks) {
                     Text("Install Claude Code hooks")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.black)
@@ -150,6 +213,10 @@ struct SessionsListView: View {
 
 private struct SessionRow: View {
     let session: AgentSession
+    let hovering: Bool
+    let hover: (Bool) -> Void
+    let open: () -> Void
+    let dismiss: () -> Void
 
     private var isWaiting: Bool { session.activity == .waitingForUser }
 
@@ -175,25 +242,47 @@ private struct SessionRow: View {
                     .foregroundStyle(.white.opacity(0.35))
                     .lineLimit(1)
                     .truncationMode(.head)
-                    .frame(maxWidth: 220, alignment: .trailing)
+                    .frame(maxWidth: 200, alignment: .trailing)
             }
-            TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                Text(elapsed(since: session.updatedAt, now: timeline.date))
-                    .font(.system(size: 11, weight: .medium).monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.45))
-                    .frame(width: 36, alignment: .trailing)
+            if hovering {
+                Button(action: dismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .frame(width: 22, height: 22)
+                        .background(Circle().fill(.white.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .help("Remove from the list until it does something new")
+            } else {
+                TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                    Text(elapsed(since: session.updatedAt, now: timeline.date))
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.45))
+                        .frame(width: 22, alignment: .trailing)
+                }
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isWaiting ? Color(hex: 0xF59E0B, opacity: 0.14) : .white.opacity(0.06))
+                .fill(
+                    isWaiting
+                        ? Color(hex: 0xF59E0B, opacity: 0.14)
+                        : .white.opacity(hovering ? 0.1 : 0.06))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(isWaiting ? Color(hex: 0xF59E0B, opacity: 0.5) : .clear)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .onTapGesture(perform: open)
+        .onHover(perform: hover)
+        .contextMenu {
+            Button(session.kind == .chat ? "Open in Claude" : "Show Conversation", action: open)
+            Button("Remove from List", action: dismiss)
+        }
     }
 
     private func abbreviated(_ path: String) -> String {
@@ -209,7 +298,7 @@ private struct SessionRow: View {
     }
 }
 
-private struct StatusDot: View {
+struct StatusDot: View {
     let activity: AgentActivity
 
     var body: some View {

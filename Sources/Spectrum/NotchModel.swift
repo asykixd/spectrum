@@ -14,13 +14,37 @@ enum AgentsTab: Hashable {
 final class NotchModel {
     let geometry: NotchGeometry
 
+    var settings: SpectrumSettings {
+        didSet {
+            guard settings != oldValue else { return }
+            do {
+                try settings.save(to: .standard)
+            } catch {
+                log.error("saving settings failed: \(error)")
+            }
+            refreshSessions()
+            updateMode()
+        }
+    }
+
     var nowPlaying: NowPlaying? { didSet { updateMode() } }
     var artwork: NSImage?
     var accent: Color = .white
-    var codeSessions: [AgentSession] = []
-    var chatSessions: [AgentSession] = []
-    /// Chats first: they are the conversations the user is most likely looking at.
-    var sessions: [AgentSession] { chatSessions + codeSessions }
+
+    var codeSessions: [AgentSession] = [] { didSet { refreshSessions() } }
+    var chatSessions: [AgentSession] = [] { didSet { refreshSessions() } }
+    /// What the panel shows: chats first, without the ones the user removed.
+    private(set) var sessions: [AgentSession] = []
+    @ObservationIgnored private var dismissals = Dismissals()
+
+    /// Code session whose conversation is open in the sessions tab.
+    var selectedSessionID: String? {
+        didSet { if selectedSessionID != oldValue { transcript = [] } }
+    }
+    var transcript: [TranscriptMessage] = []
+    /// Row under the pointer in the sessions list; it reveals the remove button.
+    var hoveredSessionID: String?
+
     var agentsOpen = false { didSet { updateMode() } }
     var isHovering = false { didSet { updateMode() } }
     var tab: AgentsTab = .sessions
@@ -30,10 +54,18 @@ final class NotchModel {
 
     @ObservationIgnored var onCommand: (MediaCommand) -> Void = { _ in }
     @ObservationIgnored var onInstallHooks: () -> Void = {}
+    @ObservationIgnored var onRemoveHooks: () -> Void = {}
+    @ObservationIgnored var onOpenSettings: () -> Void = {}
+    @ObservationIgnored var onOpenChat: (AgentSession) -> Void = { _ in }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
 
-    init(geometry: NotchGeometry) {
+    init(geometry: NotchGeometry, settings: SpectrumSettings = SpectrumSettings()) {
         self.geometry = geometry
+        self.settings = settings
+    }
+
+    var selectedSession: AgentSession? {
+        sessions.first { $0.id == selectedSessionID }
     }
 
     /// Player controls stay silent on the trackpad: haptics there felt noisy.
@@ -45,16 +77,38 @@ final class NotchModel {
         tab = newTab
     }
 
+    func open(_ session: AgentSession) {
+        switch session.kind {
+        case .code: selectedSessionID = session.id
+        case .chat: onOpenChat(session)
+        }
+    }
+
+    func dismiss(_ session: AgentSession) {
+        dismissals.dismiss(session)
+        if selectedSessionID == session.id { selectedSessionID = nil }
+        refreshSessions()
+    }
+
+    private func refreshSessions() {
+        let chats = settings.showClaudeChats ? chatSessions : []
+        let visible = dismissals.visible(chats + codeSessions)
+        if visible != sessions { sessions = visible }
+    }
+
     private func updateMode() {
+        let track = settings.showMusic ? nowPlaying : nil
         let next = NotchMode.resolve(
             current: mode,
-            isPlaying: nowPlaying?.isPlaying ?? false,
-            hasTrack: nowPlaying != nil,
+            isPlaying: track?.isPlaying ?? false,
+            hasTrack: track != nil,
             isHovering: isHovering,
             agentsOpen: agentsOpen
         )
         guard next != mode else { return }
-        if let cue = HapticCue.forTransition(from: mode, to: next) { onHaptic(cue) }
+        if settings.haptics, let cue = HapticCue.forTransition(from: mode, to: next) {
+            onHaptic(cue)
+        }
         mode = next
     }
 }

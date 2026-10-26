@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var nowPlaying: NowPlayingMonitor?
     private var agents: AgentMonitor?
     private var chats: ClaudeChatMonitor?
+    private var transcripts: TranscriptMonitor?
+    private var settingsWindow: NSWindow?
     private var dismissal = HoverDismissal()
     private var shortcuts: ShortcutMonitor?
     private var hoverTimer: Timer?
@@ -30,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             topLeftArea: screen.auxiliaryTopLeftArea,
             topRightArea: screen.auxiliaryTopRightArea
         )
-        let model = NotchModel(geometry: geometry)
+        let model = NotchModel(geometry: geometry, settings: .load(from: .standard))
         model.hooksInstalled = HookInstaller.isInstalled(settingsURL: SpectrumPaths.claudeSettings)
         model.onInstallHooks = { [weak model] in
             guard let path = Bundle.main.executableURL?.resolvingSymlinksInPath().path else {
@@ -43,6 +45,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 log.error("hook install failed: \(error)")
             }
+        }
+        model.onRemoveHooks = { [weak model] in
+            do {
+                try HookInstaller.uninstall(settingsURL: SpectrumPaths.claudeSettings)
+                model?.hooksInstalled = false
+            } catch {
+                log.error("hook removal failed: \(error)")
+            }
+        }
+        model.onOpenSettings = { [weak self] in self?.showSettings() }
+        model.onOpenChat = { _ in
+            NSRunningApplication.runningApplications(
+                withBundleIdentifier: "com.anthropic.claudefordesktop"
+            ).first?.activate()
         }
 
         let panel = NotchPanel(frame: NotchLayout.panelFrame(for: geometry))
@@ -67,9 +83,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         agents.start()
         let chats = ClaudeChatMonitor(model: model)
         chats.start()
+        let transcripts = TranscriptMonitor(model: model)
+        transcripts.start()
 
         let shortcuts = ShortcutMonitor(
-            onDoubleCommand: { [weak model] in model?.agentsOpen.toggle() },
+            modifier: { [weak model] in model?.settings.shortcut ?? .doubleCommand },
+            onDoubleTap: { [weak model] in model?.agentsOpen.toggle() },
             onEscape: { [weak model] in model?.agentsOpen = false },
             onClick: { [weak model] location in
                 guard let model, model.agentsOpen else { return }
@@ -95,6 +114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.nowPlaying = nowPlaying
         self.agents = agents
         self.chats = chats
+        self.transcripts = transcripts
         self.shortcuts = shortcuts
     }
 
@@ -114,6 +134,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let interactive = model.mode == .expanded || model.mode == .agents
         if panel.ignoresMouseEvents == interactive { panel.ignoresMouseEvents = !interactive }
+    }
+
+    private func showSettings() {
+        guard let model else { return }
+        model.agentsOpen = false
+        if settingsWindow == nil {
+            let window = NSWindow(
+                contentViewController: NSHostingController(
+                    rootView: SettingsView(model: model)))
+            window.title = "Spectrum Settings"
+            window.styleMask = [.titled, .closable]
+            window.isReleasedWhenClosed = false
+            window.center()
+            settingsWindow = window
+        }
+        // An accessory app has to activate itself for its window to take keyboard focus.
+        NSApp.activate()
+        settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
     /// Two-finger swipe across the expanded player changes the track, like flicking a card.

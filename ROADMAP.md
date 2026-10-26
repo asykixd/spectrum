@@ -15,7 +15,7 @@
 - [ ] Cursor and GitHub Copilot agents
 - [ ] Reply to Claude app chats from the panel
 
-## Done in 0.1.0
+## Done in 1.0.0
 - [x] Dynamic Island behaviour: invisible when idle, compact live activity, expanded player on hover
 - [x] Now playing for Spotify and Apple Music, featured artists, swipe to change track
 - [x] Agents panel on a double tap: sessions list and pixel office, grouped into Claude Code / Chats / AFK

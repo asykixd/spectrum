@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] - 2026-10-27
+## [1.0.0] - 2026-10-27
 
 First release.
 
@@ -29,4 +29,4 @@ First release.
 - Universal `Spectrum.app` (Apple silicon and Intel) with a Clawd icon, built by
   `scripts/bundle.sh` and attached to GitHub releases by CI.
 
-[0.1.0]: https://github.com/asykixd/spectrum/releases/tag/v0.1.0
+[1.0.0]: https://github.com/asykixd/spectrum/releases/tag/v1.0.0

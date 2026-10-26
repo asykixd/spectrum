@@ -87,7 +87,7 @@ Requires Swift 6 (Xcode or Command Line Tools).
 ```sh
 git clone https://github.com/asykixd/spectrum.git
 cd spectrum
-scripts/bundle.sh 0.1.0      # dist/Spectrum.app and dist/Spectrum-0.1.0.zip
+scripts/bundle.sh 1.0.0      # dist/Spectrum.app and dist/Spectrum-1.0.0.zip
 ```
 
 </details>

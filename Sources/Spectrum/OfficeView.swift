@@ -52,7 +52,9 @@ private final class Annotations {
 
     func add(_ item: @escaping () -> Void) { items.append(item) }
 
-    func draw() { items.forEach { $0() } }
+    func draw() {
+        for item in items { item() }
+    }
 }
 
 struct OfficeScene {

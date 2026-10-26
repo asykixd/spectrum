@@ -89,6 +89,25 @@ struct AgentLook {
     }
 }
 
+/// Claude as an office character: a terracotta head with a starburst crown.
+enum ClaudeLook {
+    static let orange = Color(hex: 0xD97757)
+    static let ink = Color(hex: 0x3D3929)
+
+    static let head = [
+        "..o.o.o..",
+        ".ooooooo.",
+        "ooooooooo",
+        "ooeoooeoo",
+        "ooooooooo",
+        ".ooooooo.",
+    ]
+
+    static let palette: [Character: Color] = [
+        "o": orange, "e": ink, "t": Color(hex: 0xF0E6D8),
+    ]
+}
+
 /// The agent's face, used as an avatar in the sessions list.
 struct AgentAvatar: View {
     let session: AgentSession
@@ -98,12 +117,18 @@ struct AgentAvatar: View {
             let pixel = size.width / 11
             let canvas = PixelCanvas(
                 context: context, pixel: pixel, origin: CGPoint(x: pixel, y: pixel * 1.5))
-            let look = AgentLook(seed: session.appearanceSeed)
-            let sleeping = session.activity == .idle
-            canvas.sprite(
-                sleeping ? AgentLook.sleepingHead : AgentLook.head, x: 0, y: 0,
-                palette: look.palette())
-            canvas.sprite(Array(AgentLook.body.prefix(2)), x: 0, y: 6, palette: look.palette())
+            let palette: [Character: Color]
+            let head: [String]
+            switch session.kind {
+            case .chat:
+                palette = ClaudeLook.palette
+                head = ClaudeLook.head
+            case .code:
+                palette = AgentLook(seed: session.appearanceSeed).palette()
+                head = session.activity == .idle ? AgentLook.sleepingHead : AgentLook.head
+            }
+            canvas.sprite(head, x: 0, y: 0, palette: palette)
+            canvas.sprite(Array(AgentLook.body.prefix(2)), x: 0, y: 6, palette: palette)
         }
         .frame(width: 30, height: 30)
         .background(Circle().fill(.white.opacity(0.08)))

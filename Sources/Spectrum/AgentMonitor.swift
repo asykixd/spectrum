@@ -48,6 +48,6 @@ final class AgentMonitor {
 
     private func publish() {
         let ordered = store.ordered
-        if model.sessions != ordered { model.sessions = ordered }
+        if model.codeSessions != ordered { model.codeSessions = ordered }
     }
 }

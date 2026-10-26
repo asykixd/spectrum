@@ -41,7 +41,10 @@ struct OfficeScene {
         for (index, session) in seated.enumerated() {
             let x = Self.deskColumns[index % Self.deskColumns.count]
             let y = Self.deskRows[index / Self.deskColumns.count]
-            drawWorkstation(canvas, x: x, top: y, session: session)
+            switch session.kind {
+            case .code: drawWorkstation(canvas, x: x, top: y, session: session)
+            case .chat: drawMeeting(canvas, x: x, top: y, session: session)
+            }
         }
         if sessions.count > seated.count {
             label(canvas, "+\(sessions.count - seated.count) more", x: 150, y: 74, size: 2.2)
@@ -256,7 +259,7 @@ struct OfficeScene {
         let step = Int(time * 6)
 
         switch activity {
-        case .usingTool:
+        case .usingTool, .responding:
             canvas.fill(screenX, screenY, 10, 5, Color(hex: 0x0B1F14))
             for row in 0..<5 {
                 let hash = (step + row * 7 + Int(seed)) &* 2_654_435_761
@@ -293,6 +296,7 @@ struct OfficeScene {
     private func glow(for activity: AgentActivity) -> Color {
         switch activity {
         case .usingTool: Color(hex: 0x4ADE80)
+        case .responding: ClaudeLook.orange
         case .thinking: Color(hex: 0x60A5FA)
         case .waitingForUser: Color(hex: 0xF59E0B)
         case .idle, .finished: .clear
@@ -324,10 +328,77 @@ struct OfficeScene {
             let rise = (time * 0.8 + seed).truncatingRemainder(dividingBy: 3)
             let opacity = 1 - rise / 3
             canvas.sprite(
-                ["zzz", "..z", ".z.", "zzz"], x: x + 1, y: headTop - 3 - rise * 2,
+                ["zzz", "..z", ".z.", "zzz"], x: x + 1, y: headTop - 4 - rise,
                 palette: ["z": .white.opacity(opacity * 0.8)])
-        case .usingTool, .finished:
+        case .usingTool, .responding, .finished:
             break
+        }
+    }
+
+    /// A Claude chat: the user and Claude talking across a small round table.
+    private func drawMeeting(_ canvas: PixelCanvas, x: Double, top: Double, session: AgentSession) {
+        let user = AgentLook(seed: 0)
+        let activity = session.activity
+        let talking = activity == .responding
+        let beat = Int(time * 5).isMultiple(of: 2)
+        let headTop = top - 9
+
+        // Chairs, then the two people facing each other.
+        canvas.fill(x, top - 6, 10, 6, Color(hex: 0x3A3F55))
+        canvas.fill(x + 18, top - 6, 10, 6, Color(hex: 0x3A3F55))
+        canvas.sprite(AgentLook.head, x: x, y: headTop, palette: user.palette())
+        canvas.sprite(AgentLook.body, x: x, y: top - 3, palette: user.palette())
+        let claudeBob = talking && beat ? 1.0 : 0.0
+        canvas.sprite(
+            ClaudeLook.head, x: x + 19, y: headTop + claudeBob, palette: ClaudeLook.palette)
+        canvas.sprite(AgentLook.body, x: x + 19, y: top - 3, palette: ClaudeLook.palette)
+
+        // Round table with two mugs.
+        canvas.fill(x + 8, top, 12, 1, Color(hex: 0xD29A63))
+        canvas.fill(x + 7, top + 1, 14, 2, Color(hex: 0xB07A4A))
+        canvas.fill(x + 13, top + 3, 2, 6, Color(hex: 0x5C3A22))
+        canvas.fill(x + 10, top + 9, 8, 1, Color(hex: 0x5C3A22))
+        canvas.fill(x + 7, top + 10, 14, 0.7, .black.opacity(0.25))
+        canvas.fill(x + 9, top - 2, 2, 2, Color(hex: 0xF4F1EA))
+        canvas.fill(x + 17, top - 2, 2, 2, ClaudeLook.orange)
+
+        switch activity {
+        case .responding:
+            drawSpeech(canvas, x: x + 11, top: headTop - 8, tailX: x + 19)
+        case .thinking:
+            drawBubble(canvas, x: x + 21, headTop: headTop, activity: .thinking, seed: 0)
+        case .waitingForUser:
+            drawTyping(canvas, x: x + 1, top: headTop - 6)
+        case .idle, .usingTool, .finished:
+            break
+        }
+        label(
+            canvas, String(session.projectName.prefix(14)), x: x + Self.deskWidth / 2, y: top + 12)
+    }
+
+    /// Claude's speech bubble with lines of text appearing as it answers.
+    private func drawSpeech(_ canvas: PixelCanvas, x: Double, top: Double, tailX: Double) {
+        canvas.fill(x, top, 12, 6, .white)
+        canvas.fill(tailX, top + 6, 1, 1, .white)
+        let progress = (time * 1.5).truncatingRemainder(dividingBy: 3)
+        for row in 0..<3 {
+            let filled = min(max(progress - Double(row), 0), 1)
+            if filled > 0 {
+                canvas.fill(x + 1, top + 1 + Double(row) * 1.5, 10 * filled, 0.8, ClaudeLook.ink)
+            }
+        }
+    }
+
+    /// The user's turn: a typing indicator above their head.
+    private func drawTyping(_ canvas: PixelCanvas, x: Double, top: Double) {
+        let bounce = sin(time * 3) > 0 ? 0.0 : 0.5
+        canvas.fill(x, top + bounce, 8, 4, .white)
+        canvas.fill(x + 6, top + 4 + bounce, 1, 1, .white)
+        let active = Int(time * 3) % 3
+        for dot in 0..<3 {
+            canvas.fill(
+                x + 1.5 + Double(dot) * 2, top + 1.5 + bounce, 1, 1,
+                Color(hex: 0xF59E0B, opacity: dot == active ? 1 : 0.35))
         }
     }
 

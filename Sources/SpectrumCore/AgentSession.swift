@@ -1,17 +1,29 @@
 import Foundation
 
-/// One Claude Code session as seen through its hook events.
+/// One conversation with Claude: a Claude Code session or a chat in the Claude app.
 public struct AgentSession: Identifiable, Equatable, Sendable {
+    public enum Kind: Equatable, Sendable {
+        /// Claude Code, tracked through hook events.
+        case code
+        /// A chat in the Claude desktop app, tracked through its accessibility tree.
+        case chat
+    }
+
     public let id: String
+    public var kind: Kind
+    public var title: String?
     public var cwd: String?
     public var activity: AgentActivity
     public let startedAt: Date
     public var updatedAt: Date
 
     public init(
-        id: String, cwd: String?, activity: AgentActivity, startedAt: Date, updatedAt: Date
+        id: String, kind: Kind = .code, title: String? = nil, cwd: String?,
+        activity: AgentActivity, startedAt: Date, updatedAt: Date
     ) {
         self.id = id
+        self.kind = kind
+        self.title = title
         self.cwd = cwd
         self.activity = activity
         self.startedAt = startedAt
@@ -19,8 +31,15 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     }
 
     public var projectName: String {
+        if let title, !title.isEmpty { return title }
+        if kind == .chat { return "Claude chat" }
         guard let cwd, !cwd.isEmpty else { return "Session \(id.prefix(6))" }
         return URL(fileURLWithPath: cwd).lastPathComponent
+    }
+
+    /// Activity in words; a chat waiting on the user reads as a conversation turn.
+    public var statusText: String {
+        kind == .chat && activity == .waitingForUser ? "Your turn" : activity.summary
     }
 
     /// Stable across launches, unlike `hashValue`, so an agent keeps its look in the office.
@@ -70,7 +89,7 @@ public struct SessionStore: Equatable, Sendable {
     private func rank(_ activity: AgentActivity) -> Int {
         switch activity {
         case .waitingForUser: 0
-        case .thinking, .usingTool: 1
+        case .thinking, .usingTool, .responding: 1
         case .idle, .finished: 2
         }
     }

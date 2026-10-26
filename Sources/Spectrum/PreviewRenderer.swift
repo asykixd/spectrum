@@ -60,12 +60,17 @@ enum PreviewRenderer {
             ("d4", "/Users/me/code/dotfiles", .idle),
             ("e5", "/Users/me/code/ml-pipeline", .usingTool("Edit")),
         ]
-        model.sessions = samples.enumerated().map { index, sample in
+        model.codeSessions = samples.enumerated().map { index, sample in
             AgentSession(
                 id: sample.0, cwd: sample.1, activity: sample.2,
                 startedAt: now.addingTimeInterval(Double(-600 + index * 60)),
                 updatedAt: now.addingTimeInterval(Double(-index * 17)))
         }
+        model.chatSessions = [
+            AgentSession(
+                id: "chat", kind: .chat, title: "Trip to Tbilisi", cwd: nil,
+                activity: .responding, startedAt: now, updatedAt: now)
+        ]
         // Mode only advances from compact to expanded, as it would with a real pointer.
         model.isHovering = false
         return model

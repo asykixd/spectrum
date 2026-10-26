@@ -3,6 +3,8 @@ public enum AgentActivity: Equatable, Sendable {
     case idle
     case thinking
     case usingTool(String)
+    /// Writing the answer: streamed text in a Claude chat.
+    case responding
     case waitingForUser
     case finished
 
@@ -27,6 +29,7 @@ public enum AgentActivity: Equatable, Sendable {
         case .idle: "Idle"
         case .thinking: "Thinking…"
         case .usingTool(let tool): "Running \(tool)"
+        case .responding: "Answering…"
         case .waitingForUser: "Waiting for you"
         case .finished: "Done"
         }
@@ -34,7 +37,7 @@ public enum AgentActivity: Equatable, Sendable {
 
     public var isWorking: Bool {
         switch self {
-        case .thinking, .usingTool: true
+        case .thinking, .usingTool, .responding: true
         case .idle, .waitingForUser, .finished: false
         }
     }

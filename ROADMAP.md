@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Now
+- [ ] Signed and notarized `.app` bundle with `Info.plist` usage descriptions, so granted permissions bind to Spectrum, not the terminal; release workflow
 - [ ] Notch panel that fits the real notch size and expands on hover
 - [ ] Now playing: track, artist, artwork and play/pause/next via MediaRemote (Music, Spotify, browsers)
 - [ ] Compact "live activity" in the closed notch: artwork + audio waveform
@@ -17,4 +18,3 @@
 - [ ] Cursor and GitHub Copilot agents
 - [ ] Reply to an agent from the notch
 - [ ] Settings window (shortcut, which modules are shown)
-- [ ] Signed and notarized `.app` bundle, release workflow

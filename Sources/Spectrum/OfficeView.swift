@@ -1,7 +1,8 @@
 import SpectrumCore
 import SwiftUI
 
-/// Pixel-art office: every agent session works at its own desk.
+/// Pixel-art office in three zones: desks for Claude Code agents at work, a meeting room for
+/// Claude app chats, and a lounge where idle agents doze off.
 struct OfficeView: View {
     let sessions: [AgentSession]
 
@@ -18,9 +19,16 @@ struct OfficeScene {
     static let columns = 160.0
     static let rows = 78.0
     static let wallHeight = 24.0
-    static let deskColumns = [14.0, 48.0, 82.0, 116.0]
+    static let deskColumns = [4.0, 36.0, 68.0]
     static let deskRows = [40.0, 63.0]
     static let deskWidth = 28.0
+    /// Glass wall between the open space and the meeting room / lounge.
+    static let partitionX = 101.0
+    static let meetingSlots = [106.0, 132.0]
+    static let meetingTop = 42.0
+    static let meetingWidth = 24.0
+    static let loungeY = 54.0
+    static let sofaSeats = [109.0, 121.0, 133.0, 145.0]
 
     let sessions: [AgentSession]
     let date: Date
@@ -35,23 +43,78 @@ struct OfficeScene {
 
         drawWall(canvas)
         drawFloor(canvas)
-        drawDecor(canvas)
+        drawZones(canvas)
 
-        let seated = sessions.prefix(Self.deskColumns.count * Self.deskRows.count)
-        for (index, session) in seated.enumerated() {
+        let groups = SessionGroups(sessions)
+        drawDesks(canvas, sessions: groups.code)
+        drawMeetingRoom(canvas, chats: groups.chats)
+        drawLounge(canvas, sessions: groups.afk)
+
+        if groups.isEmpty {
+            label(canvas, "No agents at work", x: 50, y: 34, size: 3, opacity: 0.75)
+        }
+    }
+
+    private func drawDesks(_ canvas: PixelCanvas, sessions: [AgentSession]) {
+        let capacity = Self.deskColumns.count * Self.deskRows.count
+        for index in 0..<capacity {
             let x = Self.deskColumns[index % Self.deskColumns.count]
-            let y = Self.deskRows[index / Self.deskColumns.count]
-            switch session.kind {
-            case .code: drawWorkstation(canvas, x: x, top: y, session: session)
-            case .chat: drawMeeting(canvas, x: x, top: y, session: session)
+            let top = Self.deskRows[index / Self.deskColumns.count]
+            if index < sessions.count {
+                drawWorkstation(canvas, x: x, top: top, session: sessions[index])
+            } else {
+                drawEmptyDesk(canvas, x: x, top: top)
             }
         }
-        if sessions.count > seated.count {
-            label(canvas, "+\(sessions.count - seated.count) more", x: 150, y: 74, size: 2.2)
+        if sessions.count > capacity {
+            label(canvas, "+\(sessions.count - capacity) at work", x: 50, y: 76, size: 2.2)
         }
-        if sessions.isEmpty {
-            label(canvas, "No agents at work", x: 80, y: 46, size: 3, opacity: 0.75)
-            label(canvas, "Start a Claude Code session", x: 80, y: 54, size: 2.2, opacity: 0.5)
+    }
+
+    private func drawMeetingRoom(_ canvas: PixelCanvas, chats: [AgentSession]) {
+        for (index, x) in Self.meetingSlots.enumerated() {
+            if index < chats.count {
+                drawMeeting(canvas, x: x, top: Self.meetingTop, session: chats[index])
+            } else {
+                drawMeetingTable(canvas, x: x, top: Self.meetingTop)
+            }
+        }
+        if chats.count > Self.meetingSlots.count {
+            label(
+                canvas, "+\(chats.count - Self.meetingSlots.count) chats", x: 150, y: 27,
+                size: 2)
+        }
+    }
+
+    private func drawLounge(_ canvas: PixelCanvas, sessions: [AgentSession]) {
+        let y = Self.loungeY
+        // Sofa back, then the agents sinking into it, then the seat cushions over their laps.
+        canvas.fill(106, y + 4, 50, 7, Color(hex: 0x4E3F7A))
+        canvas.fill(106, y + 4, 50, 1, Color(hex: 0x6650A0))
+        for (index, x) in Self.sofaSeats.enumerated() where index < sessions.count {
+            let session = sessions[index]
+            let look = AgentLook(seed: session.appearanceSeed)
+            // Heads loll at different moments so the lounge doesn't move in lockstep.
+            let nod = sin(time * 0.8 + Double(session.appearanceSeed % 7)) > 0.6 ? 1.0 : 0.0
+            canvas.sprite(AgentLook.sleepingHead, x: x, y: y + 3 + nod, palette: look.palette())
+            canvas.sprite(AgentLook.body, x: x, y: y + 9, palette: look.palette())
+            drawBubble(
+                canvas, x: x + 6, headTop: y + 3, activity: .idle,
+                seed: Double(session.appearanceSeed % 1000))
+            label(
+                canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 21, size: 1.9)
+        }
+        canvas.fill(105, y + 11, 52, 4, Color(hex: 0x6E5BA6))
+        canvas.fill(105, y + 11, 52, 1, Color(hex: 0x8470C0))
+        canvas.fill(103, y + 7, 3, 8, Color(hex: 0x5A4890))
+        canvas.fill(156, y + 7, 3, 8, Color(hex: 0x5A4890))
+        canvas.fill(106, y + 15, 2, 2, Color(hex: 0x2E2440))
+        canvas.fill(154, y + 15, 2, 2, Color(hex: 0x2E2440))
+        canvas.fill(104, y + 17, 54, 0.7, .black.opacity(0.25))
+        if sessions.count > Self.sofaSeats.count {
+            label(
+                canvas, "+\(sessions.count - Self.sofaSeats.count) AFK", x: 150, y: y + 1,
+                size: 2)
         }
     }
 
@@ -176,27 +239,43 @@ struct OfficeScene {
         }
     }
 
-    private func drawDecor(_ canvas: PixelCanvas) {
-        // Potted plant, gently swaying.
+    private func drawZones(_ canvas: PixelCanvas) {
+        let top = Self.wallHeight
+        let x = Self.partitionX
+        // Carpet in the meeting room, a rug in the lounge.
+        canvas.fill(x + 2, top, Self.columns - x - 2, 28, Color(hex: 0x3E4A6E))
+        for row in stride(from: top, to: top + 28, by: 2) {
+            canvas.fill(x + 2, row, Self.columns - x - 2, 0.5, Color(hex: 0x46537A))
+        }
+        canvas.fill(x + 4, Self.loungeY + 16, 54, 7, Color(hex: 0x8C4B5E))
+        canvas.fill(x + 5, Self.loungeY + 17, 52, 5, Color(hex: 0xA65B70))
+
+        // Glass partition with a door gap at the bottom.
+        canvas.fill(x, top, 2, 44, Color(hex: 0xBFE3F5, opacity: 0.35))
+        canvas.fill(x, top, 0.6, 44, Color(hex: 0xDDEFF8, opacity: 0.6))
+        canvas.fill(x, top + 27, 2, 1, Color(hex: 0x8A9BB0))
+        canvas.fill(x + 2, top + 28, Self.columns - x - 2, 1, Color(hex: 0xBFE3F5, opacity: 0.35))
+
+        label(canvas, "MEETING", x: x + 11, y: top + 3, size: 1.8, opacity: 0.45)
+        label(canvas, "LOUNGE", x: x + 10, y: Self.loungeY + 0.5, size: 1.8, opacity: 0.45)
+
+        // A plant guards the corner of the open space.
         let sway = sin(time * 1.2) > 0 ? 0.0 : 0.5
         canvas.sprite(
             ["..l.l...", ".lllll.l", "llllllll", ".llDlll.", "..lDll..", "...D...."],
-            x: 1 + sway, y: 60, palette: ["l": Color(hex: 0x3FA34D), "D": Color(hex: 0x2E7D3A)])
-        canvas.fill(1, 66, 8, 1, Color(hex: 0xD9804F))
-        canvas.fill(2, 67, 6, 5, Color(hex: 0xC46A3F))
-        canvas.fill(2, 72, 6, 0.6, .black.opacity(0.25))
+            x: x - 10 + sway, y: 25,
+            palette: ["l": Color(hex: 0x3FA34D), "D": Color(hex: 0x2E7D3A)])
+        canvas.fill(x - 10, 31, 8, 1, Color(hex: 0xD9804F))
+        canvas.fill(x - 9, 32, 6, 5, Color(hex: 0xC46A3F))
+        canvas.fill(x - 9, 37, 6, 0.6, .black.opacity(0.25))
+    }
 
-        // Water cooler with a bubble now and then.
-        canvas.fill(150, 44, 6, 8, Color(hex: 0x7CC4F5, opacity: 0.85))
-        canvas.fill(151, 43, 4, 1, Color(hex: 0x5AA8DD))
-        canvas.fill(149, 52, 8, 14, Color(hex: 0xD9DEE8))
-        canvas.fill(150, 55, 2, 1, Color(hex: 0x4A90E2))
-        canvas.fill(154, 55, 2, 1, Color(hex: 0xE5484D))
-        canvas.fill(149, 66, 8, 0.6, .black.opacity(0.25))
-        let bubble = (time * 0.7).truncatingRemainder(dividingBy: 4)
-        if bubble < 1.6 {
-            canvas.fill(152, 50 - bubble * 4, 1, 1, .white.opacity(0.7))
-        }
+    private func drawEmptyDesk(_ canvas: PixelCanvas, x: Double, top: Double) {
+        canvas.fill(x + 15, top - 6, 11, 6, Color(hex: 0x3A3F55, opacity: 0.7))
+        canvas.fill(x + 2, top - 8, 12, 7, Color(hex: 0x20222B))
+        canvas.fill(x + 3, top - 7, 10, 5, Color(hex: 0x0A0A12))
+        canvas.fill(x + 7, top - 1, 2, 1, Color(hex: 0x20222B))
+        drawDesk(canvas, x: x, top: top)
     }
 
     // MARK: Agents
@@ -343,37 +422,39 @@ struct OfficeScene {
         let beat = Int(time * 5).isMultiple(of: 2)
         let headTop = top - 9
 
-        // Chairs, then the two people facing each other.
         canvas.fill(x, top - 6, 10, 6, Color(hex: 0x3A3F55))
-        canvas.fill(x + 18, top - 6, 10, 6, Color(hex: 0x3A3F55))
+        canvas.fill(x + 14, top - 6, 10, 6, Color(hex: 0x3A3F55))
         canvas.sprite(AgentLook.head, x: x, y: headTop, palette: user.palette())
         canvas.sprite(AgentLook.body, x: x, y: top - 3, palette: user.palette())
         let claudeBob = talking && beat ? 1.0 : 0.0
         canvas.sprite(
-            ClaudeLook.head, x: x + 19, y: headTop + claudeBob, palette: ClaudeLook.palette)
-        canvas.sprite(AgentLook.body, x: x + 19, y: top - 3, palette: ClaudeLook.palette)
-
-        // Round table with two mugs.
-        canvas.fill(x + 8, top, 12, 1, Color(hex: 0xD29A63))
-        canvas.fill(x + 7, top + 1, 14, 2, Color(hex: 0xB07A4A))
-        canvas.fill(x + 13, top + 3, 2, 6, Color(hex: 0x5C3A22))
-        canvas.fill(x + 10, top + 9, 8, 1, Color(hex: 0x5C3A22))
-        canvas.fill(x + 7, top + 10, 14, 0.7, .black.opacity(0.25))
-        canvas.fill(x + 9, top - 2, 2, 2, Color(hex: 0xF4F1EA))
-        canvas.fill(x + 17, top - 2, 2, 2, ClaudeLook.orange)
+            ClaudeLook.head, x: x + 15, y: headTop + claudeBob, palette: ClaudeLook.palette)
+        canvas.sprite(AgentLook.body, x: x + 15, y: top - 3, palette: ClaudeLook.palette)
+        drawMeetingTable(canvas, x: x, top: top)
+        canvas.fill(x + 8, top - 2, 2, 2, Color(hex: 0xF4F1EA))
+        canvas.fill(x + 14, top - 2, 2, 2, ClaudeLook.orange)
 
         switch activity {
         case .responding:
-            drawSpeech(canvas, x: x + 11, top: headTop - 8, tailX: x + 19)
+            drawSpeech(canvas, x: x + 7, top: headTop - 8, tailX: x + 16)
         case .thinking:
-            drawBubble(canvas, x: x + 21, headTop: headTop, activity: .thinking, seed: 0)
+            drawBubble(canvas, x: x + 17, headTop: headTop, activity: .thinking, seed: 0)
         case .waitingForUser:
             drawTyping(canvas, x: x + 1, top: headTop - 6)
         case .idle, .usingTool, .finished:
             break
         }
         label(
-            canvas, String(session.projectName.prefix(14)), x: x + Self.deskWidth / 2, y: top + 12)
+            canvas, String(session.projectName.prefix(12)), x: x + Self.meetingWidth / 2,
+            y: top + 12)
+    }
+
+    private func drawMeetingTable(_ canvas: PixelCanvas, x: Double, top: Double) {
+        canvas.fill(x + 8, top, 8, 1, Color(hex: 0xD29A63))
+        canvas.fill(x + 7, top + 1, 10, 2, Color(hex: 0xB07A4A))
+        canvas.fill(x + 11, top + 3, 2, 6, Color(hex: 0x5C3A22))
+        canvas.fill(x + 9, top + 9, 6, 1, Color(hex: 0x5C3A22))
+        canvas.fill(x + 7, top + 10, 10, 0.7, .black.opacity(0.25))
     }
 
     /// Claude's speech bubble with lines of text appearing as it answers.

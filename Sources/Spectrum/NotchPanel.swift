@@ -1,18 +1,18 @@
 import AppKit
+import SpectrumCore
 
 /// Borderless panel pinned over the notch, above the menu bar.
 final class NotchPanel: NSPanel {
-    private static let size = NSSize(width: 220, height: 32)
+    let geometry: NotchGeometry
 
     init(screen: NSScreen) {
-        let frame = NSRect(
-            x: screen.frame.midX - Self.size.width / 2,
-            y: screen.frame.maxY - Self.size.height,
-            width: Self.size.width,
-            height: Self.size.height
+        geometry = NotchGeometry(
+            screenFrame: screen.frame,
+            topLeftArea: screen.auxiliaryTopLeftArea,
+            topRightArea: screen.auxiliaryTopRightArea
         )
         super.init(
-            contentRect: frame,
+            contentRect: geometry.panel,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false

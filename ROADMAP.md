@@ -17,6 +17,7 @@
 - [x] Sessions grouped into Claude Code / Chats / AFK, in the list and as office zones
 - [x] Conversation view from the Claude Code transcript; remove sessions from the list
 - [x] Settings window and panel menu (hooks, quit)
+- [x] Clickable office agents; Clawd mascot characters
 - [x] Reply to a Claude Code session or start a new prompt from the panel (background resume, optional)
 - [ ] Jump to the agent's terminal window from the sessions list
 - [ ] Codex support

@@ -19,12 +19,14 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     public let kind: Kind
     public let cwd: String?
     public let toolName: String?
+    public let transcriptPath: String?
 
     enum CodingKeys: String, CodingKey {
         case sessionID = "session_id"
         case kind = "hook_event_name"
         case cwd
         case toolName = "tool_name"
+        case transcriptPath = "transcript_path"
     }
 
     public static func decode(_ data: Data) throws -> AgentEvent {

@@ -13,6 +13,8 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     public var kind: Kind
     public var title: String?
     public var cwd: String?
+    /// Claude Code's JSONL transcript, for showing the conversation.
+    public var transcriptPath: String?
     public var activity: AgentActivity
     public let startedAt: Date
     public var updatedAt: Date
@@ -66,6 +68,7 @@ public struct SessionStore: Equatable, Sendable {
                 startedAt: date, updatedAt: date)
         session.activity = session.activity.applying(event)
         session.cwd = event.cwd ?? session.cwd
+        session.transcriptPath = event.transcriptPath ?? session.transcriptPath
         session.updatedAt = date
         sessions[event.sessionID] = session
     }

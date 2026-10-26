@@ -95,6 +95,12 @@ struct OfficeScene {
             }
         }
         drawSofaFront(canvas)
+        for placement in layout.placements where placement.zone == .sofa {
+            // Slow, sleepy swinging over the edge of the cushion.
+            let swing = Int(time * 1.5 + Double(placement.session.appearanceSeed % 5))
+                .isMultiple(of: 2)
+            drawLegs(canvas, x: placement.origin.x, y: Self.loungeY + 14, swing: swing)
+        }
 
         if layout.hiddenCode > 0 {
             label(canvas, "+\(layout.hiddenCode) at work", x: 50, y: 76, size: 2.2)
@@ -175,6 +181,14 @@ struct OfficeScene {
             canvas.sprite(AgentLook.body, x: x, y: bottom - 3, palette: look.palette())
             return top
         }
+    }
+
+    /// Clawd's legs, drawn after whatever they hang in front of. People keep theirs hidden.
+    private func drawLegs(_ canvas: PixelCanvas, x: Double, y: Double, swing: Bool) {
+        guard style == .clawd else { return }
+        canvas.sprite(
+            swing ? ClawdLook.legsSwinging : ClawdLook.legs, x: x, y: y,
+            palette: ClawdLook.palette(accent: .clear))
     }
 
     /// Seat cushions drawn over the loungers' laps, then the arms and the plant.
@@ -371,6 +385,8 @@ struct OfficeScene {
 
         drawMonitor(canvas, x: x + 2, top: top - 8, activity: activity, seed: seed)
         drawDesk(canvas, x: x, top: top)
+        // Legs dangle in the gap under the desk, kicking while the agent works.
+        drawLegs(canvas, x: characterX, y: top + 8, swing: activity.isWorking && beat)
 
         if activity.isWorking, style == .people {
             let left = beat ? 1.0 : 0.0
@@ -509,6 +525,7 @@ struct OfficeScene {
             canvas.sprite(AgentLook.body, x: x + 15, y: top - 3, palette: ClaudeLook.palette)
         }
         drawMeetingTable(canvas, x: x, top: top)
+        drawLegs(canvas, x: x + 15, y: top, swing: talking && beat)
         canvas.fill(x + 8, top - 2, 2, 2, Color(hex: 0xF4F1EA))
         canvas.fill(x + 14, top - 2, 2, 2, ClaudeLook.orange)
 

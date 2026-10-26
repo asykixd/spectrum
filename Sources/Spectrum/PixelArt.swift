@@ -132,6 +132,10 @@ enum ClawdLook {
         ".ooooooo.",
         ".ooooooo.",
     ]
+    /// Two pairs of stubby legs; the second frame swings the lower row.
+    static let legs = [".o.o.o.o.", ".o.o.o.o."]
+    static let legsSwinging = [".o.o.o.o.", "o.o.o.o.."]
+
     static let sleeping: [String] = [
         ".ooooooo.",
         ".ooooooo.",
@@ -177,6 +181,8 @@ struct AgentAvatar: View {
                 canvas.sprite(
                     session.activity == .idle ? ClawdLook.sleeping : ClawdLook.awake, x: 0, y: 2,
                     palette: ClawdLook.palette(accent: accent))
+                canvas.sprite(
+                    ClawdLook.legs, x: 0, y: 7, palette: ClawdLook.palette(accent: accent))
                 canvas.sprite(
                     ClawdLook.accessories[accessory], x: 0,
                     y: 2 - Double(ClawdLook.accessories[accessory].count),

@@ -21,12 +21,13 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
 
     public init(
         id: String, kind: Kind = .code, title: String? = nil, cwd: String?,
-        activity: AgentActivity, startedAt: Date, updatedAt: Date
+        transcriptPath: String? = nil, activity: AgentActivity, startedAt: Date, updatedAt: Date
     ) {
         self.id = id
         self.kind = kind
         self.title = title
         self.cwd = cwd
+        self.transcriptPath = transcriptPath
         self.activity = activity
         self.startedAt = startedAt
         self.updatedAt = updatedAt

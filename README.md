@@ -36,6 +36,7 @@ pixel-art office where every session sits at its own desk.
 | Double-tap <kbd>⌘</kbd> to open the agents panel; moving the pointer out, <kbd>Esc</kbd> or a click outside closes it | Done |
 | Sessions tab grouped into Claude Code, Chats and AFK; remove a session with ✕ | Done |
 | Click a Claude Code session to read its recent conversation and tool calls | Done |
+| Reply to an idle Claude Code session from the panel (background `claude -p --resume`), can be turned off | Done |
 | Office tab: desks for working agents, a meeting room for chats, a sofa for AFK agents | Done |
 | Settings: shortcut (⌘⌘ / ⌥⌥ / ⌃⌃), music, chats and their retention, haptics, hooks | Done |
 | Claude app chats from the last 15 minutes: you and Claude at a table — thinking, answering, your turn | Done |
@@ -79,6 +80,8 @@ Then:
 - Double-tap <kbd>⌘</kbd> to see your agents. Switch between **Sessions** and **Office**. Click a
   Claude Code session to read its conversation; click a chat to jump to the Claude app; hover a
   row and press ✕ to hide it until it does something new.
+- In a conversation, type a reply and press Return: Spectrum runs `claude -p --resume <session>`
+  in the background, so the answer shows up in Spectrum, not in the session's open terminal.
 - The gear in the panel opens Settings, installs or removes the hooks and quits Spectrum.
 - Nothing playing and the panel closed: Spectrum is invisible.
 

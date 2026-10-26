@@ -1,0 +1,11 @@
+.build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+Package.resolved.bak
+.env
+.DS_Store
+.idea/
+.vscode/
+/graphify-out

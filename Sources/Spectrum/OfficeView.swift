@@ -9,7 +9,8 @@ struct OfficeView: View {
 
     var body: some View {
         let layout = OfficeLayout(sessions: model.sessions)
-        TimelineView(.animation(minimumInterval: 1.0 / 12)) { timeline in
+        // Pixel art reads fine at 8 fps, and the office redraws hundreds of rects per frame.
+        TimelineView(.animation(minimumInterval: 1.0 / 8)) { timeline in
             Canvas { context, size in
                 OfficeScene(
                     layout: layout, date: timeline.date, hoveredID: model.officeHoverID,

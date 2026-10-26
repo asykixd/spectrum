@@ -94,7 +94,7 @@ private func snapshot(_ chat: String?, generating: Bool = false) -> ClaudeChatSn
 @Test func chatPollingSlowsDownWhenNobodyLooks() {
     #expect(
         ChatPollPolicy.interval(
-            panelOpen: true, claudeFrontmost: false, onBattery: true, pauseOnBattery: true) == 1)
+            panelOpen: true, claudeFrontmost: false, onBattery: true, pauseOnBattery: true) == 2)
     #expect(
         ChatPollPolicy.interval(
             panelOpen: false, claudeFrontmost: true, onBattery: false, pauseOnBattery: true) == 2)

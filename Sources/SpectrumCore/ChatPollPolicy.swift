@@ -9,7 +9,7 @@ public enum ChatPollPolicy {
     public static func interval(
         panelOpen: Bool, claudeFrontmost: Bool, onBattery: Bool, pauseOnBattery: Bool
     ) -> TimeInterval? {
-        if panelOpen { return 1 }
+        if panelOpen { return 2 }
         if onBattery && pauseOnBattery { return nil }
         return claudeFrontmost ? 2 : 10
     }

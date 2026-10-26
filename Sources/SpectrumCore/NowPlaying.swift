@@ -1,80 +1,80 @@
 import Foundation
 
-/// The track reported by the system now-playing service.
-///
-/// Decoded from one JSON line printed by the `SpectrumMediaHelper` library.
-public struct NowPlaying: Decodable, Equatable, Sendable {
+/// The track a music player reports through its AppleScript dictionary.
+public struct NowPlaying: Equatable, Sendable {
     public var title: String
     public var artist: String
     public var album: String
     public var duration: TimeInterval
     public var elapsed: TimeInterval
-    /// When `elapsed` was sampled, in seconds since 1970.
-    public var timestamp: TimeInterval
-    public var rate: Double
+    /// When `elapsed` was sampled.
+    public var sampledAt: Date
     public var isPlaying: Bool
-    public var bundleID: String?
-    public var artwork: Data?
-
-    enum CodingKeys: String, CodingKey {
-        case title, artist, album, duration, elapsed, timestamp, rate, bundleID, artwork
-        case isPlaying = "playing"
-    }
+    public var bundleID: String
+    public var artworkURL: URL?
 
     public init(
         title: String, artist: String, album: String = "", duration: TimeInterval = 0,
-        elapsed: TimeInterval = 0, timestamp: TimeInterval = 0, rate: Double = 1,
-        isPlaying: Bool, bundleID: String? = nil, artwork: Data? = nil
+        elapsed: TimeInterval = 0, sampledAt: Date = .distantPast, isPlaying: Bool,
+        bundleID: String, artworkURL: URL? = nil
     ) {
         self.title = title
         self.artist = artist
         self.album = album
         self.duration = duration
         self.elapsed = elapsed
-        self.timestamp = timestamp
-        self.rate = rate
+        self.sampledAt = sampledAt
         self.isPlaying = isPlaying
         self.bundleID = bundleID
-        self.artwork = artwork
+        self.artworkURL = artworkURL
     }
 
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
-        artist = try container.decodeIfPresent(String.self, forKey: .artist) ?? ""
-        album = try container.decodeIfPresent(String.self, forKey: .album) ?? ""
-        duration = try container.decodeIfPresent(Double.self, forKey: .duration) ?? 0
-        elapsed = try container.decodeIfPresent(Double.self, forKey: .elapsed) ?? 0
-        timestamp = try container.decodeIfPresent(Double.self, forKey: .timestamp) ?? 0
-        rate = try container.decodeIfPresent(Double.self, forKey: .rate) ?? 1
-        isPlaying = try container.decode(Bool.self, forKey: .isPlaying)
-        bundleID = try container.decodeIfPresent(String.self, forKey: .bundleID)
-        artwork = try container.decodeIfPresent(String.self, forKey: .artwork)
-            .flatMap { Data(base64Encoded: $0) }
+    /// Parses the tab-separated line produced by Spectrum's player scripts:
+    /// `state, title, artist, album, duration (s), position (s), artwork URL`.
+    ///
+    /// Returns nil when the player has no current track.
+    public static func parse(scriptOutput: String, bundleID: String, sampledAt: Date) -> NowPlaying?
+    {
+        let fields = scriptOutput.components(separatedBy: "\t")
+        guard fields.count >= 6, !fields[1].isEmpty else { return nil }
+        return NowPlaying(
+            title: fields[1],
+            artist: fields[2],
+            album: fields[3],
+            duration: number(fields[4]),
+            elapsed: number(fields[5]),
+            sampledAt: sampledAt,
+            isPlaying: fields[0] == "playing",
+            bundleID: bundleID,
+            artworkURL: fields.count > 6 ? URL(string: fields[6]).flatMap(validURL) : nil
+        )
     }
 
-    public static func decodeLine(_ line: Data) throws -> NowPlaying {
-        try JSONDecoder().decode(NowPlaying.self, from: line)
+    /// Same track, ignoring playback position: used to avoid refetching artwork.
+    public func isSameTrack(as other: NowPlaying?) -> Bool {
+        guard let other else { return false }
+        return title == other.title && artist == other.artist && album == other.album
+            && bundleID == other.bundleID
     }
-
-    public var hasTrack: Bool { !title.isEmpty }
 
     /// Playback position extrapolated from the last sample.
     public func position(at date: Date) -> TimeInterval {
-        guard isPlaying, timestamp > 0 else { return clamped(elapsed) }
-        return clamped(elapsed + (date.timeIntervalSince1970 - timestamp) * rate)
+        let value = isPlaying ? elapsed + date.timeIntervalSince(sampledAt) : elapsed
+        return duration > 0 ? min(max(value, 0), duration) : max(value, 0)
     }
 
-    private func clamped(_ value: TimeInterval) -> TimeInterval {
-        duration > 0 ? min(max(value, 0), duration) : max(value, 0)
+    /// AppleScript formats numbers with the user's locale, e.g. "212,5" in Russian.
+    private static func number(_ text: String) -> Double {
+        Double(text.replacingOccurrences(of: ",", with: ".")) ?? 0
+    }
+
+    private static func validURL(_ url: URL) -> URL? {
+        url.scheme == "https" || url.scheme == "http" ? url : nil
     }
 }
 
-/// Commands understood by `MRMediaRemoteSendCommand`.
-public enum MediaCommand: Int, Sendable {
-    case play = 0
-    case pause = 1
-    case togglePlayPause = 2
-    case nextTrack = 4
-    case previousTrack = 5
+public enum MediaCommand: Sendable {
+    case togglePlayPause
+    case nextTrack
+    case previousTrack
 }

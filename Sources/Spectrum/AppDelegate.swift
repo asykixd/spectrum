@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var agents: AgentMonitor?
     private var chats: ClaudeChatMonitor?
     private var transcripts: TranscriptMonitor?
+    private var replies: ReplySender?
     private var settingsWindow: NSWindow?
     private var dismissal = HoverDismissal()
     private var shortcuts: ShortcutMonitor?
@@ -85,6 +86,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         chats.start()
         let transcripts = TranscriptMonitor(model: model)
         transcripts.start()
+        let replies = ReplySender(model: model)
+        model.onReply = { [weak replies] prompt, session in replies?.send(prompt, to: session) }
 
         let shortcuts = ShortcutMonitor(
             modifier: { [weak model] in model?.settings.shortcut ?? .doubleCommand },
@@ -115,6 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.agents = agents
         self.chats = chats
         self.transcripts = transcripts
+        self.replies = replies
         self.shortcuts = shortcuts
     }
 
@@ -129,7 +133,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let rect = NotchLayout.visibleRect(for: model.mode, geometry: model.geometry)
         let hovering = rect.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation)
         if model.isHovering != hovering { model.isHovering = hovering }
-        if dismissal.update(isOpen: model.mode == .agents, isInside: hovering) {
+        // A half-typed reply keeps the panel open even if the pointer drifts away.
+        let open = model.mode == .agents && model.replyDraft.isEmpty
+        if dismissal.update(isOpen: open, isInside: hovering) {
             model.agentsOpen = false
         }
         let interactive = model.mode == .expanded || model.mode == .agents

@@ -28,9 +28,7 @@ struct AgentsPanelView: View {
                 switch model.tab {
                 case .sessions:
                     if let session = model.selectedSession {
-                        ConversationView(
-                            session: session, messages: model.transcript,
-                            close: { model.selectedSessionID = nil })
+                        ConversationView(model: model, session: session)
                     } else {
                         SessionsListView(model: model)
                     }

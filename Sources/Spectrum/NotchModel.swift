@@ -39,9 +39,17 @@ final class NotchModel {
 
     /// Code session whose conversation is open in the sessions tab.
     var selectedSessionID: String? {
-        didSet { if selectedSessionID != oldValue { transcript = [] } }
+        didSet {
+            guard selectedSessionID != oldValue else { return }
+            transcript = []
+            replyError = nil
+        }
     }
     var transcript: [TranscriptMessage] = []
+    var replyDraft = ""
+    var replyError: String?
+    /// Sessions with a `claude -p --resume` run in flight.
+    var replyingSessionIDs: Set<String> = []
     /// Row under the pointer in the sessions list; it reveals the remove button.
     var hoveredSessionID: String?
 
@@ -57,6 +65,7 @@ final class NotchModel {
     @ObservationIgnored var onRemoveHooks: () -> Void = {}
     @ObservationIgnored var onOpenSettings: () -> Void = {}
     @ObservationIgnored var onOpenChat: (AgentSession) -> Void = { _ in }
+    @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
 
     init(geometry: NotchGeometry, settings: SpectrumSettings = SpectrumSettings()) {

@@ -46,6 +46,15 @@ struct OfficeView: View {
     }
 }
 
+/// Bubbles, names and the hover outline are drawn after night lighting so they stay readable.
+private final class Annotations {
+    private var items: [() -> Void] = []
+
+    func add(_ item: @escaping () -> Void) { items.append(item) }
+
+    func draw() { items.forEach { $0() } }
+}
+
 struct OfficeScene {
     static let columns = OfficeLayout.columns
     static let rows = OfficeLayout.rows
@@ -81,18 +90,21 @@ struct OfficeScene {
         }
         drawSofaBack(canvas)
 
+        let notes = Annotations()
         if let hovered = layout.placements.first(where: { $0.session.id == hoveredID }) {
-            drawHighlight(canvas, hovered.hitArea)
+            notes.add { drawHighlight(canvas, hovered.hitArea) }
         }
         for placement in layout.placements {
             let origin = placement.origin
             switch placement.zone {
             case .desk:
-                drawWorkstation(canvas, x: origin.x, top: origin.y, session: placement.session)
+                drawWorkstation(
+                    canvas, x: origin.x, top: origin.y, session: placement.session, notes: notes)
             case .meeting:
-                drawMeeting(canvas, x: origin.x, top: origin.y, session: placement.session)
+                drawMeeting(
+                    canvas, x: origin.x, top: origin.y, session: placement.session, notes: notes)
             case .sofa:
-                drawLounger(canvas, x: origin.x, session: placement.session)
+                drawLounger(canvas, x: origin.x, session: placement.session, notes: notes)
             }
         }
         drawSofaFront(canvas)
@@ -106,6 +118,7 @@ struct OfficeScene {
         if darkness > 0 {
             drawNightLighting(canvas)
         }
+        notes.draw()
 
         if layout.hiddenCode > 0 {
             label(canvas, "+\(layout.hiddenCode) at work", x: 50, y: 76, size: 2.2)
@@ -135,43 +148,65 @@ struct OfficeScene {
         canvas.fill(x - 1, top - 5.5, 4, 1.5, Color(hex: 0xE8C46A))
     }
 
-    /// Dims the room, then adds light back where it comes from: monitors in the colour of what
-    /// the agent is doing, desk lamps, the meeting table and the lounge. Drawn only while the
-    /// office is open, so it costs nothing in the background.
+    /// Dims the room, then adds light back where it comes from: lamp cones onto the desks,
+    /// monitor spill in the colour of what each agent is doing, and pools under the meeting
+    /// table and the sofa. Light is drawn in hard-edged steps on the pixel grid to match the
+    /// art. Drawn only while the office is open, so it costs nothing in the background.
     private func drawNightLighting(_ canvas: PixelCanvas) {
         canvas.fill(0, 0, Self.columns, Self.rows, Color(hex: 0x070B22, opacity: darkness))
 
-        var light = canvas.context
-        light.blendMode = .plusLighter
-        func shine(_ x: Double, _ y: Double, radius: Double, _ color: Color, _ strength: Double) {
-            let center = canvas.point(x, y)
-            let size = radius * canvas.pixel
-            light.fill(
-                Path(
-                    ellipseIn: CGRect(
-                        x: center.x - size, y: center.y - size, width: size * 2, height: size * 2)),
-                with: .radialGradient(
-                    Gradient(colors: [color.opacity(strength * darkness), color.opacity(0)]),
-                    center: center, startRadius: 0, endRadius: size))
+        var context = canvas.context
+        context.blendMode = .plusLighter
+        let light = PixelCanvas(context: context, pixel: canvas.pixel, origin: canvas.origin)
+        let warm = Color(hex: 0xFFB45C)
+
+        /// An ellipse in two nested steps, one grid row per rect.
+        func pool(_ cx: Double, _ cy: Double, rx: Double, ry: Double, _ color: Color) {
+            for step in 0..<2 {
+                let scale = 1 - Double(step) * 0.4
+                let radiusX = rx * scale
+                let radiusY = max(ry * scale, 0.5)
+                var row = (cy - radiusY).rounded(.down)
+                while row < cy + radiusY {
+                    let dy = (row + 0.5 - cy) / radiusY
+                    let half = (radiusX * (1 - dy * dy).squareRoot()).rounded()
+                    if half > 0 {
+                        light.fill(cx - half, row, half * 2, 1, color.opacity(0.13 * darkness))
+                    }
+                    row += 1
+                }
+            }
         }
 
-        let warm = Color(hex: 0xFFC56B)
+        /// A narrow cone from a lamp shade down to the desk, never wider than the shade's reach.
+        func cone(_ cx: Double, from top: Double, to bottom: Double, _ color: Color) {
+            var row = top
+            while row < bottom {
+                let half = min(1 + ((row - top) * 0.6).rounded(), 3)
+                light.fill(cx - half, row, half * 2, 1, color.opacity(0.16 * darkness))
+                row += 1
+            }
+        }
+
         for placement in layout.placements {
-            let origin = placement.origin
+            let x = placement.origin.x
+            let top = placement.origin.y
             switch placement.zone {
             case .desk:
+                light.fill(x - 1.5, top - 5.5, 4, 1.5, warm.opacity(0.7 * darkness))
+                cone(x + 1, from: top - 4, to: top, warm)
+                // Screens are light sources: they stay bright instead of dimming with the room.
                 let screen = glow(for: placement.session.activity)
-                shine(
-                    origin.x + 8, origin.y - 4.5, radius: 11, screen == .clear ? .white : screen,
-                    0.5)
-                shine(origin.x + 1, origin.y - 3, radius: 9, warm, 0.8)
+                if screen != .clear {
+                    light.fill(x + 3, top - 7, 10, 5, screen.opacity(0.35 * darkness))
+                }
             case .meeting:
-                shine(origin.x + 12, origin.y - 4, radius: 14, warm, 0.6)
+                pool(x + 12, top + 9.5, rx: 11, ry: 2, warm)
             case .sofa:
                 break
             }
         }
-        shine(126, Self.loungeY + 8, radius: 22, warm, 0.35)
+        pool(126, Self.loungeY + 19, rx: 18, ry: 2.5, warm)
     }
 
     /// A soft spotlight under the agent the pointer is on.
@@ -192,16 +227,20 @@ struct OfficeScene {
         canvas.fill(106, y + 4, 40, 1, Color(hex: 0x6650A0))
     }
 
-    private func drawLounger(_ canvas: PixelCanvas, x: Double, session: AgentSession) {
+    private func drawLounger(
+        _ canvas: PixelCanvas, x: Double, session: AgentSession, notes: Annotations
+    ) {
         let y = Self.loungeY
         // Heads loll at different moments so the lounge doesn't move in lockstep.
         let nod = sin(time * 0.8 + Double(session.appearanceSeed % 7)) > 0.6 ? 1.0 : 0.0
         let headTop = drawCharacter(
             canvas, session: session, x: x, bottom: y + 11, sleeping: true, lift: nod)
-        drawBubble(
-            canvas, x: x + 6, headTop: headTop, activity: .idle,
-            seed: Double(session.appearanceSeed % 1000))
-        label(canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 21, size: 1.9)
+        notes.add {
+            drawBubble(
+                canvas, x: x + 6, headTop: headTop, activity: .idle,
+                seed: Double(session.appearanceSeed % 1000))
+            label(canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 21, size: 1.9)
+        }
     }
 
     /// Draws an agent whose lowest visible row ends at `bottom` and returns the top of its
@@ -424,7 +463,7 @@ struct OfficeScene {
     // MARK: Agents
 
     private func drawWorkstation(
-        _ canvas: PixelCanvas, x: Double, top: Double, session: AgentSession
+        _ canvas: PixelCanvas, x: Double, top: Double, session: AgentSession, notes: Annotations
     ) {
         let look = AgentLook(seed: session.appearanceSeed)
         let activity = session.activity
@@ -458,9 +497,12 @@ struct OfficeScene {
             canvas.fill(x + 26, top - 1.5, 0.6, 1, Color(hex: 0xF4F1EA))
         }
 
-        drawBubble(canvas, x: characterX + 6, headTop: headTop, activity: activity, seed: seed)
-        label(
-            canvas, String(session.projectName.prefix(14)), x: x + Self.deskWidth / 2, y: top + 12)
+        notes.add {
+            drawBubble(canvas, x: characterX + 6, headTop: headTop, activity: activity, seed: seed)
+            label(
+                canvas, String(session.projectName.prefix(14)), x: x + Self.deskWidth / 2,
+                y: top + 12)
+        }
     }
 
     private func drawDesk(_ canvas: PixelCanvas, x: Double, top: Double) {
@@ -561,7 +603,9 @@ struct OfficeScene {
     }
 
     /// A Claude chat: the user and Claude talking across a small round table.
-    private func drawMeeting(_ canvas: PixelCanvas, x: Double, top: Double, session: AgentSession) {
+    private func drawMeeting(
+        _ canvas: PixelCanvas, x: Double, top: Double, session: AgentSession, notes: Annotations
+    ) {
         let user = AgentLook(seed: 0)
         let activity = session.activity
         let talking = activity == .responding
@@ -589,19 +633,21 @@ struct OfficeScene {
         canvas.fill(x + 8, top - 2, 2, 2, Color(hex: 0xF4F1EA))
         canvas.fill(x + 14, top - 2, 2, 2, ClaudeLook.orange)
 
-        switch activity {
-        case .responding:
-            drawSpeech(canvas, x: x + 7, top: headTop - 8, tailX: x + 16)
-        case .thinking:
-            drawBubble(canvas, x: x + 17, headTop: headTop, activity: .thinking, seed: 0)
-        case .waitingForUser:
-            drawTyping(canvas, x: x + 1, top: headTop - 6)
-        case .idle, .usingTool, .finished:
-            break
+        notes.add {
+            switch activity {
+            case .responding:
+                drawSpeech(canvas, x: x + 7, top: headTop - 8, tailX: x + 16)
+            case .thinking:
+                drawBubble(canvas, x: x + 17, headTop: headTop, activity: .thinking, seed: 0)
+            case .waitingForUser:
+                drawTyping(canvas, x: x + 1, top: headTop - 6)
+            case .idle, .usingTool, .finished:
+                break
+            }
+            label(
+                canvas, String(session.projectName.prefix(12)), x: x + Self.meetingWidth / 2,
+                y: top + 12)
         }
-        label(
-            canvas, String(session.projectName.prefix(12)), x: x + Self.meetingWidth / 2,
-            y: top + 12)
     }
 
     private func drawMeetingTable(_ canvas: PixelCanvas, x: Double, top: Double) {

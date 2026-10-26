@@ -31,6 +31,8 @@ pixel-art office where every session sits at its own desk.
 | Compact live activity while music plays: artwork and animated waveform tinted by the artwork | Done |
 | Hover to expand: title, artist, progress, previous / play-pause / next, source app icon | Done |
 | Spotify and Apple Music | Done |
+| Force Touch haptics on MacBook trackpads: island opens and closes, buttons, tabs, swipes | Done |
+| Two-finger swipe across the player: left for next track, right for previous | Done |
 | Double-tap <kbd>⌘</kbd> to open the agents panel; <kbd>Esc</kbd> or a click outside closes it | Done |
 | Sessions tab: every Claude Code session, what it is doing, who is waiting for you | Done |
 | Office tab: pixel-art office, one animated character per session, desk screen shows the activity | Done |
@@ -66,7 +68,9 @@ Connect Claude Code once (or press **Install Claude Code hooks** in the agents p
 
 Then:
 
-- Play something in Spotify or Apple Music: the notch grows a live activity. Hover it for controls.
+- Play something in Spotify or Apple Music: the notch grows a live activity. Hover it for controls;
+  swipe left or right with two fingers to change the track. On a MacBook trackpad you feel a light
+  tap as the island opens and closes.
 - Double-tap <kbd>⌘</kbd> to see your agents. Switch between **Sessions** and **Office**.
 - Nothing playing and the panel closed: Spectrum is invisible.
 

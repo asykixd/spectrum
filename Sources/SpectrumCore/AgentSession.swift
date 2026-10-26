@@ -8,6 +8,16 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     public let startedAt: Date
     public var updatedAt: Date
 
+    public init(
+        id: String, cwd: String?, activity: AgentActivity, startedAt: Date, updatedAt: Date
+    ) {
+        self.id = id
+        self.cwd = cwd
+        self.activity = activity
+        self.startedAt = startedAt
+        self.updatedAt = updatedAt
+    }
+
     public var projectName: String {
         guard let cwd, !cwd.isEmpty else { return "Session \(id.prefix(6))" }
         return URL(fileURLWithPath: cwd).lastPathComponent

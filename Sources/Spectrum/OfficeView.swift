@@ -99,7 +99,7 @@ struct OfficeScene {
             // Slow, sleepy swinging over the edge of the cushion.
             let swing = Int(time * 1.5 + Double(placement.session.appearanceSeed % 5))
                 .isMultiple(of: 2)
-            drawLegs(canvas, x: placement.origin.x, y: Self.loungeY + 14, swing: swing)
+            drawLegs(canvas, x: placement.origin.x, y: Self.loungeY + 11, swing: swing)
         }
 
         if layout.hiddenCode > 0 {
@@ -139,7 +139,7 @@ struct OfficeScene {
         // Heads loll at different moments so the lounge doesn't move in lockstep.
         let nod = sin(time * 0.8 + Double(session.appearanceSeed % 7)) > 0.6 ? 1.0 : 0.0
         let headTop = drawCharacter(
-            canvas, session: session, x: x, bottom: y + 12, sleeping: true, lift: nod)
+            canvas, session: session, x: x, bottom: y + 11, sleeping: true, lift: nod)
         drawBubble(
             canvas, x: x + 6, headTop: headTop, activity: .idle,
             seed: Double(session.appearanceSeed % 1000))
@@ -191,7 +191,7 @@ struct OfficeScene {
             palette: ClawdLook.palette(accent: .clear))
     }
 
-    /// Seat cushions drawn over the loungers' laps, then the arms and the plant.
+    /// Seat cushions in front of the loungers, then the arms and the plant.
     private func drawSofaFront(_ canvas: PixelCanvas) {
         let y = Self.loungeY
         canvas.fill(105, y + 11, 42, 4, Color(hex: 0x6E5BA6))

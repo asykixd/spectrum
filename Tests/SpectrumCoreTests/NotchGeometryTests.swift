@@ -11,7 +11,8 @@ import Testing
     let geometry = NotchGeometry(screenFrame: screen, topLeftArea: left, topRightArea: right)
 
     #expect(geometry.notch == CGRect(x: 547, y: 800, width: 186, height: 32))
-    #expect(geometry.panel == CGRect(x: 467, y: 800, width: 346, height: 32))
+    #expect(geometry.panel == CGRect(x: 507, y: 800, width: 266, height: 32))
+    #expect(geometry.hasHardwareNotch)
 }
 
 @Test func fallsBackToCenteredNotchWithoutHardwareNotch() {
@@ -19,6 +20,7 @@ import Testing
 
     let geometry = NotchGeometry(screenFrame: screen, topLeftArea: nil, topRightArea: nil)
 
+    #expect(!geometry.hasHardwareNotch)
     #expect(geometry.notch.midX == screen.midX)
     #expect(geometry.notch.maxY == screen.maxY)
     #expect(geometry.panel.width == geometry.notch.width + 2 * NotchGeometry.earWidth)

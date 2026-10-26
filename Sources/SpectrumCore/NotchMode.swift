@@ -1,0 +1,24 @@
+/// What the notch shows, mirroring Dynamic Island states.
+public enum NotchMode: Equatable, Sendable {
+    /// Nothing outside the hardware notch: Spectrum looks like it isn't running.
+    case hidden
+    /// Music is playing: artwork and waveform on the notch ears.
+    case compact
+    /// Pointer over the live activity: full player controls.
+    case expanded
+    /// Agents panel opened with a double tap of ⌘.
+    case agents
+
+    public static func resolve(
+        current: NotchMode, isPlaying: Bool, hasTrack: Bool, isHovering: Bool,
+        agentsOpen: Bool
+    ) -> NotchMode {
+        if agentsOpen { return .agents }
+        // Hover only grows an activity that is already visible, and keeps it open after a pause
+        // so the user can press play again.
+        if isHovering, hasTrack, current == .compact || current == .expanded {
+            return .expanded
+        }
+        return isPlaying ? .compact : .hidden
+    }
+}

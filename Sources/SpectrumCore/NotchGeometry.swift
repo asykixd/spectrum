@@ -3,12 +3,14 @@ import CoreGraphics
 /// Placement of the panel around the hardware notch, in screen coordinates (origin bottom-left).
 public struct NotchGeometry: Equatable, Sendable {
     /// Width of each visible "ear" to the left and right of the notch.
-    public static let earWidth: CGFloat = 80
+    public static let earWidth: CGFloat = 40
     /// Fallback for screens without a notch, roughly the size of a MacBook notch.
     static let fallbackNotchSize = CGSize(width: 185, height: 32)
 
     public let notch: CGRect
     public let panel: CGRect
+    /// False when the screen has no notch and `notch` is a centered stand-in.
+    public let hasHardwareNotch: Bool
 
     /// - Parameters:
     ///   - screenFrame: `NSScreen.frame`.
@@ -21,11 +23,13 @@ public struct NotchGeometry: Equatable, Sendable {
             notch = CGRect(
                 x: left.maxX, y: screenFrame.maxY - height,
                 width: right.minX - left.maxX, height: height)
+            hasHardwareNotch = true
         } else {
             let size = Self.fallbackNotchSize
             notch = CGRect(
                 x: screenFrame.midX - size.width / 2, y: screenFrame.maxY - size.height,
                 width: size.width, height: size.height)
+            hasHardwareNotch = false
         }
         self.notch = notch
         panel = notch.insetBy(dx: -Self.earWidth, dy: 0)

@@ -35,7 +35,8 @@ struct WaveformView: View {
     var height: CGFloat = 14
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !isPlaying)) { timeline in
+        // 20 fps reads as smooth for bouncing bars at a fraction of the cost of 60.
+        TimelineView(.animation(minimumInterval: 1.0 / 20, paused: !isPlaying)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
             HStack(alignment: .center, spacing: 2) {
                 ForEach(0..<barCount, id: \.self) { index in

@@ -96,9 +96,12 @@ final class NowPlayingMonitor {
     }
 
     func start() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        // A slow safety-net poll: the players' own notifications deliver changes instantly,
+        // and the position between samples is extrapolated.
+        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
+        timer?.tolerance = 1
         // Both players broadcast state changes, which makes play/pause feel instant.
         let center = DistributedNotificationCenter.default()
         for name in ["com.spotify.client.PlaybackStateChanged", "com.apple.Music.playerInfo"] {

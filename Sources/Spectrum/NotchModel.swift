@@ -69,6 +69,7 @@ final class NotchModel {
     @ObservationIgnored var onOpenChat: (AgentSession) -> Void = { _ in }
     @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
+    @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
 
     init(geometry: NotchGeometry, settings: SpectrumSettings = SpectrumSettings()) {
         self.geometry = geometry
@@ -125,6 +126,7 @@ final class NotchModel {
             onHaptic(cue)
         }
         mode = next
+        onModeChange(next)
     }
 }
 

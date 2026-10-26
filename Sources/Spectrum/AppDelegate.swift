@@ -107,10 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return event
         }
 
-        hoverTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20, repeats: true) {
-            [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
-        }
+        model.onModeChange = { [weak self] mode in self?.updatePointerTracking(for: mode) }
 
         self.panel = panel
         self.model = model
@@ -124,6 +121,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         agents?.stop()
+    }
+
+    /// While the island is hidden there is nothing to hover, so the pointer poll stops entirely
+    /// and Spectrum stays asleep until music or the shortcut wakes it.
+    private func updatePointerTracking(for mode: NotchMode) {
+        if mode == .hidden {
+            hoverTimer?.invalidate()
+            hoverTimer = nil
+            tick()
+            return
+        }
+        guard hoverTimer == nil else { return }
+        let timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20, repeats: true) {
+            [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
+        }
+        timer.tolerance = 0.01
+        hoverTimer = timer
     }
 
     /// Polls the pointer instead of using tracking areas: the panel ignores mouse events while

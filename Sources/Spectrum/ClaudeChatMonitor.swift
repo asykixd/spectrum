@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import IOKit.ps
 import SpectrumCore
 
 /// Reads the Claude desktop app's accessibility tree, off the main thread: a long chat has
@@ -42,28 +43,23 @@ private final class ClaudeAppReader: @unchecked Sendable {
         func walk(_ element: AXUIElement) {
             visited += 1
             guard visited < Self.nodeLimit else { return }
-            switch string(element, kAXRoleAttribute) {
+            // One IPC round trip per node instead of one per attribute: this walk is the
+            // most expensive thing Spectrum does.
+            let node = attributes(of: element)
+            switch node.role {
             case "AXWebArea":
-                if let found = value(element, "AXURL") as? URL, found.host() == "claude.ai" {
+                if let found = node.url, found.host() == "claude.ai" {
                     url = found
-                    pageTitle = string(element, kAXTitleAttribute)
+                    pageTitle = node.title
                 }
             case kAXButtonRole:
-                for attribute in [kAXDescriptionAttribute, kAXTitleAttribute] {
-                    if let label = string(element, attribute), !label.isEmpty {
-                        buttons.append(label)
-                    }
-                }
+                buttons += [node.description, node.title].compactMap { $0 }.filter { !$0.isEmpty }
             case kAXStaticTextRole:
-                if let text = string(element, kAXValueAttribute), !text.isEmpty {
-                    texts.append(text)
-                }
+                if let text = node.value, !text.isEmpty { texts.append(text) }
             default:
                 break
             }
-            for child in value(element, kAXChildrenAttribute) as? [AXUIElement] ?? [] {
-                walk(child)
-            }
+            node.children.forEach(walk)
         }
 
         let windows = value(root, kAXWindowsAttribute) as? [AXUIElement] ?? []
@@ -73,15 +69,41 @@ private final class ClaudeAppReader: @unchecked Sendable {
             pageTitle: pageTitle, url: url, buttonLabels: buttons, texts: texts)
     }
 
+    private struct Node {
+        var role: String?
+        var title: String?
+        var description: String?
+        var value: String?
+        var url: URL?
+        var children: [AXUIElement] = []
+    }
+
+    private static let nodeAttributes = [
+        kAXRoleAttribute, kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute, "AXURL",
+        kAXChildrenAttribute,
+    ]
+
+    private func attributes(of element: AXUIElement) -> Node {
+        var result: CFArray?
+        guard
+            AXUIElementCopyMultipleAttributeValues(
+                element, Self.nodeAttributes as CFArray, [], &result)
+                == .success,
+            let values = result as? [AnyObject], values.count == 6
+        else { return Node() }
+        // Missing attributes come back as AXValue error placeholders, which the casts reject.
+        return Node(
+            role: values[0] as? String, title: values[1] as? String,
+            description: values[2] as? String, value: values[3] as? String,
+            url: values[4] as? URL, children: values[5] as? [AXUIElement] ?? [])
+    }
+
     private func value(_ element: AXUIElement, _ attribute: String) -> AnyObject? {
         var result: AnyObject?
         let status = AXUIElementCopyAttributeValue(element, attribute as CFString, &result)
         return status == .success ? result : nil
     }
 
-    private func string(_ element: AXUIElement, _ attribute: String) -> String? {
-        value(element, attribute) as? String
-    }
 }
 
 /// Shows chats from the Claude desktop app as conversations in the office.
@@ -95,6 +117,7 @@ final class ClaudeChatMonitor {
     private var tracker = ClaudeChatTracker()
     private var timer: Timer?
     private var reading = false
+    private var lastRead = Date.distantPast
 
     init(model: NotchModel) {
         self.model = model
@@ -104,10 +127,24 @@ final class ClaudeChatMonitor {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
+        timer?.tolerance = 0.3
+    }
+
+    private static var onBattery: Bool {
+        let source = IOPSGetProvidingPowerSourceType(nil)?.takeRetainedValue() as String?
+        return source == kIOPMBatteryPowerKey
     }
 
     private func refresh() {
-        guard !reading, model.settings.showClaudeChats, AXIsProcessTrusted() else { return }
+        let frontmost =
+            NSWorkspace.shared.frontmostApplication?.bundleIdentifier == ClaudeAppReader.bundleID
+        guard !reading, model.settings.showClaudeChats,
+            let interval = ChatPollPolicy.interval(
+                panelOpen: model.agentsOpen, claudeFrontmost: frontmost,
+                onBattery: Self.onBattery, pauseOnBattery: model.settings.pauseChatsOnBattery),
+            Date().timeIntervalSince(lastRead) >= interval - 0.1, AXIsProcessTrusted()
+        else { return }
+        lastRead = Date()
         tracker.retention = TimeInterval(model.settings.chatRetentionMinutes * 60)
         reading = true
         Task {

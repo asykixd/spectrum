@@ -30,6 +30,7 @@ final class AgentMonitor {
                 self.publish()
             }
         }
+        pruneTimer?.tolerance = 10
     }
 
     func stop() {

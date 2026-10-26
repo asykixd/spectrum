@@ -6,13 +6,23 @@ import SwiftUI
 /// Runs NSAppleScript on one serial queue: it is not thread-safe, and player round trips can
 /// take tens of milliseconds, which would stutter animations on the main thread.
 private final class ScriptRunner: @unchecked Sendable {
+    /// What callers need from a script's result. The descriptor itself isn't Sendable, so it
+    /// never leaves the script queue.
+    struct Output: Sendable {
+        var string: String?
+        var data: Data?
+    }
+
     private let queue = DispatchQueue(label: "spectrum.applescript")
     private var cache: [String: NSAppleScript] = [:]
 
-    func run(_ source: String) async -> NSAppleEventDescriptor? {
+    @discardableResult
+    func run(_ source: String) async -> Output {
         await withCheckedContinuation { continuation in
             queue.async {
-                continuation.resume(returning: self.execute(source))
+                let result = self.execute(source)
+                continuation.resume(
+                    returning: Output(string: result?.stringValue, data: result?.data))
             }
         }
     }
@@ -120,7 +130,7 @@ final class NowPlayingMonitor {
             let verb = player.commands[command]
         else { return }
         Task {
-            _ = await runner.run("tell application id \"\(bundleID)\" to \(verb)")
+            await runner.run("tell application id \"\(bundleID)\" to \(verb)")
             refresh()
         }
     }
@@ -132,7 +142,7 @@ final class NowPlayingMonitor {
             defer { refreshing = false }
             var tracks: [NowPlaying] = []
             for player in players where player.isRunning {
-                let output = await runner.run(player.stateScript)?.stringValue ?? ""
+                let output = await runner.run(player.stateScript).string ?? ""
                 if let track = NowPlaying.parse(
                     scriptOutput: output, bundleID: player.bundleID, sampledAt: Date())
                 {
@@ -179,7 +189,7 @@ final class NowPlayingMonitor {
             data =
                 await runner.run(
                     "tell application id \"com.apple.Music\" to get raw data of artwork 1 of current track"
-                )?.data
+                ).data
         }
         // The track may have changed while the artwork was loading.
         guard let data, let image = NSImage(data: data),

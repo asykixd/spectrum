@@ -1,153 +1,177 @@
 <div align="center">
 
+<img src="docs/screenshots/icon.png" width="128" alt="Spectrum icon">
+
 # Spectrum
 
-**Dynamic Island for the Mac notch: now-playing music and a live pixel office of your AI coding agents.**
+**Dynamic Island for the Mac notch: now-playing music and a live pixel office of your Claude agents.**
 
+[![Release](https://img.shields.io/github/v/release/asykixd/spectrum?style=flat-square)](https://github.com/asykixd/spectrum/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/asykixd/spectrum/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/asykixd/spectrum/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue?style=flat-square&logo=apple)](#installation)
-[![Swift 6](https://img.shields.io/badge/Swift-6-blue?style=flat-square&logo=swift&logoColor=white)](Package.swift)
+[![Swift 6](https://img.shields.io/badge/Swift-6-orange?style=flat-square&logo=swift&logoColor=white)](Package.swift)
+
+<img src="docs/screenshots/agents-office.png" width="720" alt="The agents panel showing the pixel office">
 
 </div>
 
-<!-- Demo: add a screenshot or GIF of the notch here once the UI lands, e.g. docs/demo.gif -->
-
-Spectrum is a native macOS notch app written in Swift and SwiftUI that behaves like the iPhone
-Dynamic Island. When nothing is playing it is invisible. When music plays, the notch grows into a
-compact live activity with artwork and a waveform. Double-tap <kbd>⌘</kbd> and it opens your AI
-agents: a list of Claude Code sessions showing who is working and who is waiting for you, and a
-pixel-art office where every session sits at its own desk.
-
-> [!NOTE]
-> Spectrum is in early development and is not packaged as a signed `.app` yet; it runs from a
-> Swift build. See [ROADMAP.md](ROADMAP.md).
+Spectrum is a native macOS app, written in Swift and SwiftUI, that turns the MacBook notch into
+an iPhone-style Dynamic Island. When nothing is happening it is invisible. When music plays, the
+notch grows a live activity. Double-tap <kbd>⌘</kbd> and it opens your agents: every Claude Code
+session and Claude app chat, as a list or as a pixel-art office where Clawd mascots work at their
+desks, talk in the meeting room and doze on the sofa.
 
 ## Features
 
-| Feature | Status |
+### Music
+
+<img src="docs/screenshots/compact.png" width="470" alt="Compact live activity">
+
+- Invisible when idle; a compact live activity with artwork and a waveform tinted by the cover
+  while music plays.
+- Hover to expand: title, every featured artist, progress, previous / play-pause / next.
+- Two-finger swipe across the player changes the track.
+- Spotify and Apple Music.
+
+<img src="docs/screenshots/expanded.png" width="470" alt="Expanded player">
+
+### Agents
+
+- Double-tap <kbd>⌘</kbd> (or <kbd>⌥</kbd> / <kbd>⌃</kbd>) for the agents panel; move the pointer
+  away, press <kbd>Esc</kbd> or click outside to close it.
+- **Sessions**: Claude Code agents, Claude app chats and AFK agents in separate groups, with what
+  each one is doing right now. Hover a row and press ✕ to hide it until it does something new.
+- **Conversation**: click a Claude Code session to read its recent messages and tool calls, and
+  reply to it when it is idle.
+- **Office**: desks for working agents with screens showing their activity, a meeting room where
+  you and Claude talk through a chat, a lounge for idle agents. Hover to highlight, click to open.
+  The room follows your Mac's clock, from a blue sky to a lamp-lit night.
+
+| Sessions | Conversation |
 | --- | --- |
-| Invisible when idle, like Dynamic Island: nothing outside the hardware notch | Done |
-| Compact live activity while music plays: artwork and animated waveform tinted by the artwork | Done |
-| Hover to expand: title, artist, progress, previous / play-pause / next, source app icon | Done |
-| Spotify and Apple Music, with every featured artist on Spotify tracks | Done |
-| Force Touch haptics on MacBook trackpads when the island opens and closes | Done |
-| Two-finger swipe across the player: left for next track, right for previous | Done |
-| Double-tap <kbd>⌘</kbd> to open the agents panel; moving the pointer out, <kbd>Esc</kbd> or a click outside closes it | Done |
-| Sessions tab grouped into Claude Code, Chats and AFK; remove a session with ✕ | Done |
-| Click a Claude Code session to read its recent conversation and tool calls | Done |
-| Reply to an idle Claude Code session from the panel (background `claude -p --resume`), can be turned off | Done |
-| Office tab: desks for working agents, a meeting room for chats, a sofa for AFK agents | Done |
-| Office follows the Mac's clock: day sky, sunset, and a dimmed room lit by monitors and desk lamps at night | Done |
-| Office agents are Clawd mascots with their own accessories (or people); hover to highlight, click to open | Done |
-| Settings: shortcut (⌘⌘ / ⌥⌥ / ⌃⌃), music, chats and their retention, haptics, hooks | Done |
-| Claude app chats from the last 15 minutes: you and Claude at a table — thinking, answering, your turn | Done |
-| One-click Claude Code hook installer that keeps your existing hooks | Done |
-| Signed `.app` bundle | Planned |
-| Jump to an agent's terminal, Codex / Cursor / Copilot agents | Planned |
-| Browsers and other players | Planned |
+| <img src="docs/screenshots/agents-sessions.png" alt="Sessions list"> | <img src="docs/screenshots/agents-conversation.png" alt="Conversation view"> |
+
+<img src="docs/screenshots/agents-office-night.png" width="720" alt="The office at night">
+
+### Signals
+
+The island calls you only when it matters. When an agent needs permission or an answer it pulses
+until you look; when a task finishes it flashes a checkmark for a moment and goes away.
+
+<img src="docs/screenshots/attention.png" width="470" alt="An agent needs you">
+<img src="docs/screenshots/done.png" width="470" alt="A task finished">
 
 ## Installation
 
-Requires macOS 14 or later and Swift 6 (Xcode or Command Line Tools). There are no prebuilt
-releases yet; build from source:
+1. Download `Spectrum-<version>.zip` from the
+   [latest release](https://github.com/asykixd/spectrum/releases/latest) and unzip it.
+2. Move `Spectrum.app` to **Applications**.
+3. The app is signed ad hoc, not notarized, so macOS blocks the first launch. Clear the
+   quarantine flag once:
+
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/Spectrum.app
+   ```
+
+4. Open Spectrum. It has no Dock icon; double-tap <kbd>⌘</kbd> to see it.
+5. In the panel, click the gear → **Install Claude Code Hooks**.
+
+Requires macOS 14 or later, on Apple silicon or Intel.
+
+<details>
+<summary>Build from source</summary>
+
+Requires Swift 6 (Xcode or Command Line Tools).
 
 ```sh
 git clone https://github.com/asykixd/spectrum.git
 cd spectrum
-swift build -c release
+scripts/bundle.sh 0.1.0      # dist/Spectrum.app and dist/Spectrum-0.1.0.zip
 ```
 
-## Usage
+</details>
 
-Start the app:
+## Permissions
 
-```sh
-.build/release/Spectrum
-```
-
-Connect Claude Code once (or press **Install Claude Code hooks** in the agents panel):
-
-```sh
-.build/release/Spectrum install-hooks
-```
-
-Then:
-
-- Play something in Spotify or Apple Music: the notch grows a live activity. Hover it for controls;
-  swipe left or right with two fingers to change the track. On a MacBook trackpad you feel a light
-  tap as the island opens and closes.
-- Chat in the Claude desktop app: the chat shows up next to your Claude Code sessions for 15
-  minutes after you last had it open.
-- Double-tap <kbd>⌘</kbd> to see your agents. Switch between **Sessions** and **Office**. Click a
-  Claude Code session to read its conversation; click a chat to jump to the Claude app; hover a
-  row and press ✕ to hide it until it does something new.
-- In a conversation, type a reply and press Return: Spectrum runs `claude -p --resume <session>`
-  in the background, so the answer shows up in Spectrum, not in the session's open terminal.
-- In **Office**, hover an agent to highlight it and click it to open its conversation (or the
-  Claude app for a chat).
-- The gear in the panel opens Settings, installs or removes the hooks and quits Spectrum.
-- Nothing playing and the panel closed: Spectrum is invisible.
-
-Spectrum runs as an accessory app with no Dock icon. To quit: `pkill -f Spectrum`.
-
-### Permissions
+macOS asks once for each:
 
 | Permission | Why |
 | --- | --- |
-| Accessibility | Watching <kbd>⌘</kbd> and <kbd>Esc</kbd> system-wide; reading chat state from the Claude app |
-
-### Energy
-
-Hidden, Spectrum stays under 1% CPU and about 40 MB of memory: the pointer isn't polled while
-the island is hidden, timers allow coalescing, and the players are asked only every few seconds
-(their own notifications report changes instantly). Animations run only while visible.
-
-Tracking Claude app chats is the expensive part: Spectrum reads the app's accessibility tree,
-and Electron keeps that tree up to date while it is read. Reads drop to every 10 s while Claude
-is in the background and pause on battery by default; turn chats off in Settings to avoid the
-cost entirely.
+| Accessibility | The double-tap shortcut and <kbd>Esc</kbd> system-wide; reading chat state from the Claude app |
 | Automation → Spotify / Music | Reading the current track and sending play, pause, next, previous |
 
-While Spectrum runs from a terminal, macOS attributes these permissions to the terminal app.
+Spectrum is signed ad hoc, so macOS may ask again after an update.
 
-### Commands
+## Settings
 
-| Command | Description |
+The gear in the agents panel opens Settings, installs or removes the hooks and quits Spectrum.
+
+| Setting | Default |
 | --- | --- |
-| `Spectrum` | Run the app |
-| `Spectrum install-hooks` | Add Spectrum hooks to `~/.claude/settings.json` (a one-time backup is saved next to it) |
-| `Spectrum uninstall-hooks` | Remove only Spectrum's hooks |
-| `Spectrum hook` | Called by Claude Code hooks: forwards the event from stdin to the app; silent, always exits 0 |
-| `Spectrum preview <dir>` | Render every notch state with sample data to PNG files |
+| Show music while it plays | On |
+| Pulse when an agent needs permission or an answer | On |
+| Flash a checkmark when a task finishes | On |
+| Trackpad haptics when the island opens and closes | On |
+| Agents panel shortcut | Double-tap ⌘ |
+| Office characters | Clawd |
+| Reply to idle Claude Code sessions from the panel | On |
+| Show chats from the Claude app | On |
+| Keep chats listed for | 15 minutes |
+| Pause chat tracking on battery | On |
+| Drop silent Claude Code sessions after | 1 hour |
 
 ## How it works
 
 ```mermaid
 flowchart LR
     CC[Claude Code] -- hook JSON --> Hook[Spectrum hook]
-    Hook -- unix socket --> Agents[AgentMonitor<br/>SessionStore]
+    Hook -- unix socket --> Agents[AgentMonitor]
     Players[Spotify / Music] -- AppleScript --> Music[NowPlayingMonitor]
     App[Claude app] -- Accessibility --> Chats[ClaudeChatMonitor]
-    Chats --> Model
-    Keys[⌘⌘ / Esc] --> Model
-    Agents --> Model[NotchModel<br/>NotchMode]
+    Keys[double tap / Esc] --> Model
+    Agents --> Model[NotchModel]
     Music --> Model
-    Model --> UI[Notch panel<br/>SwiftUI]
+    Chats --> Model
+    Model --> UI[Notch panel]
 ```
 
-- `Sources/SpectrumCore`: UI-free, unit-tested logic: hook events, sessions, socket transport,
-  hook installer, now-playing parsing, double-tap detection, notch modes and geometry.
-- `Sources/Spectrum`: the AppKit/SwiftUI app: a non-activating `NSPanel` above the menu bar.
+- **Claude Code** reports to Spectrum through hooks in `~/.claude/settings.json`. Each hook runs
+  `Spectrum hook`, which forwards the event over a local socket, stays silent and always exits 0,
+  so it never slows an agent down. Your own hooks are kept, and a backup of the file is saved the
+  first time.
+- **Replies** run `claude -p --resume <session>` in the background: the answer appears in
+  Spectrum, not in the session's open terminal.
+- **Music**: MediaRemote no longer answers third-party apps since macOS 15.4, so Spectrum asks
+  Spotify and Apple Music through AppleScript. Spotify reports only the first artist; the full
+  list comes from the track's public embed page.
+- **Claude app chats** have no hooks. Spectrum reads the app's accessibility tree: a Stop button
+  means Claude is answering, the page title names the chat.
 
-MediaRemote, which NotchNook-style apps used to read any player, no longer answers third-party
-apps since macOS 15.4, so Spectrum talks to Spotify and Apple Music through their AppleScript
-dictionaries. Spotify's dictionary reports only the first artist, so the full list comes from the
-track's public embed page.
+Source layout: `Sources/SpectrumCore` holds the UI-free, unit-tested logic; `Sources/Spectrum` is
+the AppKit/SwiftUI app.
 
-The Claude desktop app has no hooks. Spectrum reads its accessibility tree: a Stop button means
-Claude is answering, the page title names the chat. A chat that just finished answering is
-shown as your turn.
+## Energy
+
+Hidden, Spectrum stays under 1% CPU and about 40 MB of memory: nothing is polled while the
+island is hidden, timers allow coalescing, and animations run only while visible.
+
+Tracking Claude app chats costs the most, in Spectrum and in the Claude app, which keeps its
+accessibility tree up to date while it is read. Reads drop to every 10 seconds while Claude is in
+the background and pause on battery by default. Turn chats off in Settings to avoid the cost.
+
+## Commands
+
+The app binary doubles as a small CLI:
+
+| Command | Description |
+| --- | --- |
+| `Spectrum install-hooks` | Add Spectrum's hooks to `~/.claude/settings.json` |
+| `Spectrum uninstall-hooks` | Remove only Spectrum's hooks |
+| `Spectrum hook` | Called by the hooks; forwards the event on stdin to the app |
+| `Spectrum preview <dir>` | Render every state with demo data to PNG files (the screenshots above) |
+
+The binary lives at `/Applications/Spectrum.app/Contents/MacOS/Spectrum`.
 
 ## Development
 
@@ -155,10 +179,11 @@ shown as your turn.
 swift format lint --strict --recursive Sources Tests Package.swift
 swift build
 swift test
+.build/debug/Spectrum            # run without bundling
 ```
 
 <details>
-<summary>Running tests with Command Line Tools only (no Xcode)</summary>
+<summary>Testing with Command Line Tools only (no Xcode)</summary>
 
 The Swift Testing macro plugin is not found by default:
 
@@ -168,9 +193,8 @@ swift test -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/us
 
 </details>
 
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md).
+Releases are built by `.github/workflows/release.yml` when a `v*` tag is pushed. See
+[CHANGELOG.md](CHANGELOG.md) and [ROADMAP.md](ROADMAP.md).
 
 ## License
 
@@ -179,5 +203,5 @@ See [ROADMAP.md](ROADMAP.md).
 ---
 
 <div align="center">
-<sub>Built with <a href="https://claude.com/claude-code">Claude Code</a>.</sub>
+<sub>Built with <a href="https://claude.com/claude-code">Claude Code</a>. Clawd is Anthropic's Claude Code mascot; Spectrum is not affiliated with Anthropic.</sub>
 </div>

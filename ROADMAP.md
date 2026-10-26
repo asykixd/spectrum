@@ -1,32 +1,27 @@
 # Roadmap
 
 ## Now
-- [ ] Signed and notarized `.app` bundle with `Info.plist` usage descriptions, so granted permissions bind to Spectrum, not the terminal; release workflow
-- [x] Invisible when idle: with no music playing and the agents panel closed, nothing is drawn outside the hardware notch
-- [x] Now playing: track, artist, artwork and play/pause/next for Spotify and Apple Music (AppleScript)
-- [x] Compact live activity while music plays: artwork on the left ear, animated waveform on the right; expands on hover
-- [x] Trackpad haptics when the island opens and closes; two-finger swipe changes the track
-- [x] Double-tap ⌘ toggles the agents panel (global modifier-key monitor)
-- [x] Receive Claude Code hook events (local socket) and track sessions by `session_id`
+- [x] Universal `Spectrum.app` with `Info.plist` usage descriptions and an app icon; release workflow
+- [ ] Developer ID signing and notarization, so the app opens without the quarantine workaround
+- [ ] Jump to the agent's terminal window from the sessions list
+- [ ] Launch at login
 
 ## Next
-- [x] Agents panel, tab 1 — sessions list: each chat with its project, current activity and who is waiting for input
-- [x] Agents panel, tab 2 — pixel office: one character per session, desk screen shows the current activity
-- [x] Hook installer that adds Spectrum hooks to `~/.claude/settings.json`
-- [x] Claude app chats from the last 15 minutes as conversations in the office
-- [x] Sessions grouped into Claude Code / Chats / AFK, in the list and as office zones
-- [x] Conversation view from the Claude Code transcript; remove sessions from the list
-- [x] Settings window and panel menu (hooks, quit)
-- [x] Clickable office agents; Clawd mascot characters
-- [x] Night lighting from the Mac's clock
-- [x] Energy: under 1% CPU while hidden; chat tracking slows down and pauses on battery
-- [x] Reply to a Claude Code session or start a new prompt from the panel (background resume, optional)
-- [ ] Jump to the agent's terminal window from the sessions list
 - [ ] Codex support
-
-## Later
 - [ ] Browsers and other players in now playing (MediaRemote ignores third-party apps since macOS 15.4)
 - [ ] Waveform driven by real audio levels instead of an animation
+
+## Later
 - [ ] Cursor and GitHub Copilot agents
-- [ ] Optional notch nudge when an agent waits for input (off by default to keep the idle notch invisible)
-- [ ] Settings window (shortcut, which modules are shown)
+- [ ] Reply to Claude app chats from the panel
+
+## Done in 0.1.0
+- [x] Dynamic Island behaviour: invisible when idle, compact live activity, expanded player on hover
+- [x] Now playing for Spotify and Apple Music, featured artists, swipe to change track
+- [x] Agents panel on a double tap: sessions list and pixel office, grouped into Claude Code / Chats / AFK
+- [x] Claude Code hooks over a local socket, hook installer, conversation view, replies via `claude -p --resume`
+- [x] Claude app chats from the last 15 minutes via Accessibility
+- [x] Clawd characters, clickable office, day/night lighting
+- [x] Pulse when an agent needs the user, checkmark when a task finishes
+- [x] Settings window and panel menu
+- [x] Energy: under 1% CPU while hidden; chat tracking slows down and pauses on battery

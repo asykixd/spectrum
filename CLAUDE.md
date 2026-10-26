@@ -13,6 +13,8 @@ and Lumio-style pixel office showing AI coding agents' live activity. Nothing el
 - Lint: `swift format lint --strict --recursive Sources Tests Package.swift`
 - Build / run: `swift build`, `.build/debug/Spectrum`
 - UI check without music/agents: `.build/debug/Spectrum preview <dir>` renders every mode to PNG
+- README screenshots: render with `preview`, crop into `docs/screenshots/` (demo data only, never real sessions)
+- App bundle: `scripts/bundle.sh <version>` → `dist/Spectrum.app` + zip; icon: `scripts/make-icon.sh`
 - Test: `swift test` (Swift Testing, `@Test` / `#expect`)
   - With Command Line Tools only (no Xcode), the Testing macro plugin isn't found by default:
     `swift test -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`

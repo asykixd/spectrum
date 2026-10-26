@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds dist/Spectrum.app and dist/Spectrum-<version>.zip.
+# Builds dist/Spectrum.app, dist/Spectrum-<version>.zip and dist/Spectrum-<version>.dmg.
 #
 #   scripts/bundle.sh 0.1.0
 #
@@ -29,5 +29,16 @@ codesign --verify --strict "$app"
 zip="dist/Spectrum-$version.zip"
 rm -f "$zip"
 ditto -c -k --keepParent "$app" "$zip"
+
+# Drag-to-install disk image: the app next to a shortcut to /Applications.
+dmg="dist/Spectrum-$version.dmg"
+staging=$(mktemp -d)
+trap 'rm -rf "$staging"' EXIT
+cp -R "$app" "$staging/"
+ln -s /Applications "$staging/Applications"
+rm -f "$dmg"
+hdiutil create -volname Spectrum -srcfolder "$staging" -fs HFS+ -format UDZO -ov "$dmg" >/dev/null
+
 echo "$app"
 echo "$zip"
+echo "$dmg"

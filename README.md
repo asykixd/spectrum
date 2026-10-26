@@ -64,9 +64,9 @@ until you look; when a task finishes it flashes a checkmark for a moment and goe
 
 ## Installation
 
-1. Download `Spectrum-<version>.zip` from the
-   [latest release](https://github.com/asykixd/spectrum/releases/latest) and unzip it.
-2. Move `Spectrum.app` to **Applications**.
+1. Download `Spectrum-<version>.dmg` from the
+   [latest release](https://github.com/asykixd/spectrum/releases/latest) and open it.
+2. Drag `Spectrum.app` onto **Applications**. (A `.zip` is attached too.)
 3. The app is signed ad hoc, not notarized, so macOS blocks the first launch. Clear the
    quarantine flag once:
 
@@ -87,7 +87,7 @@ Requires Swift 6 (Xcode or Command Line Tools).
 ```sh
 git clone https://github.com/asykixd/spectrum.git
 cd spectrum
-scripts/bundle.sh 1.0.0      # dist/Spectrum.app and dist/Spectrum-1.0.0.zip
+scripts/bundle.sh 1.0.0      # dist/Spectrum.app, Spectrum-1.0.0.zip and Spectrum-1.0.0.dmg
 ```
 
 </details>

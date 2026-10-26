@@ -1,6 +1,6 @@
 name: Release
 
-# Builds Spectrum.app for a version tag and attaches the zip to its GitHub release.
+# Builds Spectrum.app for a version tag and attaches the dmg and zip to its GitHub release.
 on:
   push:
     tags: ["v*"]
@@ -31,4 +31,4 @@ jobs:
       - name: Upload
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --generate-notes
-          gh release upload "$TAG" "dist/Spectrum-${TAG#v}.zip" --clobber
+          gh release upload "$TAG" "dist/Spectrum-${TAG#v}.dmg" "dist/Spectrum-${TAG#v}.zip" --clobber

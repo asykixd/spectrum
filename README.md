@@ -13,9 +13,11 @@
 
 <!-- Demo: add a screenshot or GIF of the notch here once the UI lands, e.g. docs/demo.gif -->
 
-Spectrum is a native macOS notch app written in Swift and SwiftUI. It turns the MacBook notch into
-a Dynamic Island–style live activity for whatever music is playing, and into a tiny pixel-art
-office where every Claude Code session sits at its own desk showing what it is doing right now.
+Spectrum is a native macOS notch app written in Swift and SwiftUI that behaves like the iPhone
+Dynamic Island. When nothing is playing it is invisible. When music plays, the notch grows into a
+compact live activity with artwork and a waveform. Double-tap <kbd>⌘</kbd> and it opens your AI
+agents: a list of Claude Code sessions showing who is working and who is waiting for you, and a
+pixel-art office where every session sits at its own desk.
 
 > [!NOTE]
 > Spectrum is in early development. The notch panel and the Claude Code event model work today;
@@ -26,11 +28,13 @@ office where every Claude Code session sits at its own desk showing what it is d
 | Feature | Status |
 | --- | --- |
 | Borderless panel sized to the hardware notch, content on the left and right "ears" | Done |
+| Invisible when idle, like Dynamic Island | Planned |
 | Claude Code hook event decoding and per-session activity state (thinking, tool use, waiting, finished) | Done |
 | Now playing: artwork, title, artist, play/pause/next for Music, Spotify and browsers | Planned |
-| Compact live activity in the closed notch: artwork and audio waveform | Planned |
-| Pixel office: one character per agent session, desk screen shows the current tool | Planned |
-| Notch alert when an agent waits for your input, click to jump to its terminal | Planned |
+| Compact live activity while music plays: artwork and audio waveform, expands on hover | Planned |
+| Double-tap <kbd>⌘</kbd> to open the agents panel | Planned |
+| Sessions list: who is working on what, who is waiting for input, jump to terminal | Planned |
+| Pixel office: one character per agent session, desk screen shows the current activity | Planned |
 | Codex, Cursor and GitHub Copilot agents | Planned |
 
 ## Installation
@@ -50,8 +54,9 @@ swift build -c release
 swift run Spectrum
 ```
 
-A black panel appears around the notch at the top of the main screen. Spectrum runs as an
-accessory app, so it has no Dock icon or menu. To quit:
+In the current build a placeholder panel is always shown around the notch so you can see that the
+app runs; it will become invisible when idle. Spectrum runs as an accessory app, so it has no Dock
+icon or menu. To quit:
 
 ```sh
 pkill -f Spectrum

@@ -3,6 +3,11 @@
 macOS notch app combining two ideas: NotchNook-style now-playing music (Dynamic Island look)
 and Lumio-style pixel office showing AI coding agents' live activity. Nothing else from NotchNook.
 
+## Product behavior (source of truth)
+- Behaves like iPhone Dynamic Island: when no music is playing and the agents panel is closed, Spectrum is invisible — nothing outside the hardware notch.
+- Music playing → compact live activity on the notch ears; hover expands it.
+- Agents are shown only on demand: double-tap ⌘ opens a panel with two tabs — (1) sessions list: who is working on what, who is waiting; (2) pixel office.
+
 ## Commands
 - Format: `swift format --in-place --recursive Sources Tests Package.swift`
 - Lint: `swift format lint --strict --recursive Sources Tests Package.swift`

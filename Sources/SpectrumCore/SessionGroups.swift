@@ -2,16 +2,16 @@
 public struct SessionGroups: Equatable, Sendable {
     /// Claude Code sessions that are working or waiting for the user.
     public var code: [AgentSession] = []
-    /// Conversations in the Claude app.
+    /// Claude app conversations in progress: Claude thinking or answering, or the user's turn.
     public var chats: [AgentSession] = []
-    /// Claude Code sessions with nothing to do.
+    /// Sessions with nothing going on, Claude Code or chat.
     public var afk: [AgentSession] = []
 
     public init(_ sessions: [AgentSession]) {
         for session in sessions {
             switch (session.kind, session.activity) {
+            case (_, .idle), (_, .finished): afk.append(session)
             case (.chat, _): chats.append(session)
-            case (.code, .idle), (.code, .finished): afk.append(session)
             case (.code, _): code.append(session)
             }
         }

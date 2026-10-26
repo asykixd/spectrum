@@ -16,6 +16,8 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     public var haptics = true
     /// Code agents that stay quiet this long leave the office without a SessionEnd.
     public var staleAgentMinutes = 60
+    /// Lets the conversation view send prompts to idle Claude Code sessions.
+    public var replyFromPanel = true
 
     public init() {}
 
@@ -37,6 +39,9 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         staleAgentMinutes =
             try container.decodeIfPresent(Int.self, forKey: .staleAgentMinutes)
             ?? defaults.staleAgentMinutes
+        replyFromPanel =
+            try container.decodeIfPresent(Bool.self, forKey: .replyFromPanel)
+            ?? defaults.replyFromPanel
     }
 
     public static func load(from defaults: UserDefaults, key: String = "settings")

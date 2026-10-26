@@ -56,3 +56,25 @@ private let sampledAt = Date(timeIntervalSince1970: 1000)
     #expect(later.isSameTrack(as: first))
     #expect(!later.isSameTrack(as: nil))
 }
+
+@Test func parsesSpotifyTrackURI() throws {
+    let line = "playing\tSong\tA\t\t100\t1\thttps://i.scdn.co/x\tspotify:track:6sdT"
+
+    let track = try #require(
+        NowPlaying.parse(scriptOutput: line, bundleID: "com.spotify.client", sampledAt: sampledAt))
+
+    #expect(track.trackURI == "spotify:track:6sdT")
+    #expect(
+        SpotifyEmbed.url(forTrackURI: "spotify:track:6sdT")
+            == URL(string: "https://open.spotify.com/embed/track/6sdT"))
+    #expect(SpotifyEmbed.url(forTrackURI: "spotify:episode:1") == nil)
+}
+
+@Test func readsAllArtistsFromEmbedPage() {
+    let html = #"""
+        <script>{"title":"Song","artists":[{"name":"Sqwore","uri":"spotify:artist:1"},{"name":"rizza","uri":"spotify:artist:2"}],"related":{"artists":[{"name":"Other"}]}}</script>
+        """#
+
+    #expect(SpotifyEmbed.artists(fromHTML: html) == ["Sqwore", "rizza"])
+    #expect(SpotifyEmbed.artists(fromHTML: "<html></html>").isEmpty)
+}

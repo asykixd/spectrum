@@ -46,7 +46,7 @@ private let players = [
             tell application id "com.spotify.client"
                 try
                     set t to current track
-                    return (player state as string) & tab & (name of t) & tab & (artist of t) & tab & (album of t) & tab & ((duration of t) / 1000 as string) & tab & (player position as string) & tab & (artwork url of t)
+                    return (player state as string) & tab & (name of t) & tab & (artist of t) & tab & (album of t) & tab & ((duration of t) / 1000 as string) & tab & (player position as string) & tab & (artwork url of t) & tab & (id of t)
                 on error
                     return "stopped"
                 end try
@@ -88,6 +88,8 @@ final class NowPlayingMonitor {
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
     private var refreshing = false
+    /// Full artist lists by Spotify track URI; AppleScript only knows the first artist.
+    private var spotifyArtists: [String: String] = [:]
 
     init(model: NotchModel) {
         self.model = model
@@ -138,13 +140,32 @@ final class NowPlayingMonitor {
         }
     }
 
-    private func apply(_ track: NowPlaying?) {
+    private func apply(_ reported: NowPlaying?) {
+        var track = reported
+        if let uri = track?.trackURI, let artists = spotifyArtists[uri] {
+            track?.artist = artists
+        }
         let previous = model.nowPlaying
         if track != previous { model.nowPlaying = track }
         guard let track, !track.isSameTrack(as: previous) else { return }
         model.artwork = nil
         model.accent = .white
         Task { await loadArtwork(for: track) }
+        if let uri = track.trackURI, spotifyArtists[uri] == nil {
+            Task { await loadSpotifyArtists(uri: uri) }
+        }
+    }
+
+    private func loadSpotifyArtists(uri: String) async {
+        guard let url = SpotifyEmbed.url(forTrackURI: uri),
+            let (data, _) = try? await URLSession.shared.data(from: url)
+        else { return }
+        let artists = SpotifyEmbed.artists(fromHTML: String(decoding: data, as: UTF8.self))
+        guard !artists.isEmpty else { return }
+        spotifyArtists[uri] = artists.joined(separator: ", ")
+        if model.nowPlaying?.trackURI == uri {
+            model.nowPlaying?.artist = artists.joined(separator: ", ")
+        }
     }
 
     private func loadArtwork(for track: NowPlaying) async {

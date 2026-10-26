@@ -52,6 +52,8 @@ final class NotchModel {
     var replyingSessionIDs: Set<String> = []
     /// Row under the pointer in the sessions list; it reveals the remove button.
     var hoveredSessionID: String?
+    /// Agent under the pointer in the office.
+    var officeHoverID: String?
 
     var agentsOpen = false { didSet { updateMode() } }
     var isHovering = false { didSet { updateMode() } }
@@ -86,10 +88,14 @@ final class NotchModel {
         tab = newTab
     }
 
-    func open(_ session: AgentSession) {
+    /// Opens a session's conversation; from the office this jumps to the sessions tab.
+    func open(_ session: AgentSession, fromOffice: Bool = false) {
         switch session.kind {
-        case .code: selectedSessionID = session.id
-        case .chat: onOpenChat(session)
+        case .code:
+            selectedSessionID = session.id
+            if fromOffice { tab = .sessions }
+        case .chat:
+            onOpenChat(session)
         }
     }
 

@@ -18,6 +18,8 @@
 - [x] Conversation view from the Claude Code transcript; remove sessions from the list
 - [x] Settings window and panel menu (hooks, quit)
 - [x] Clickable office agents; Clawd mascot characters
+- [x] Night lighting from the Mac's clock
+- [x] Energy: under 1% CPU while hidden; chat tracking slows down and pauses on battery
 - [x] Reply to a Claude Code session or start a new prompt from the panel (background resume, optional)
 - [ ] Jump to the agent's terminal window from the sessions list
 - [ ] Codex support

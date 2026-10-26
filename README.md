@@ -38,6 +38,7 @@ pixel-art office where every session sits at its own desk.
 | Click a Claude Code session to read its recent conversation and tool calls | Done |
 | Reply to an idle Claude Code session from the panel (background `claude -p --resume`), can be turned off | Done |
 | Office tab: desks for working agents, a meeting room for chats, a sofa for AFK agents | Done |
+| Office follows the Mac's clock: day sky, sunset, and a dimmed room lit by monitors and desk lamps at night | Done |
 | Office agents are Clawd mascots with their own accessories (or people); hover to highlight, click to open | Done |
 | Settings: shortcut (⌘⌘ / ⌥⌥ / ⌃⌃), music, chats and their retention, haptics, hooks | Done |
 | Claude app chats from the last 15 minutes: you and Claude at a table — thinking, answering, your turn | Done |
@@ -95,6 +96,17 @@ Spectrum runs as an accessory app with no Dock icon. To quit: `pkill -f Spectrum
 | Permission | Why |
 | --- | --- |
 | Accessibility | Watching <kbd>⌘</kbd> and <kbd>Esc</kbd> system-wide; reading chat state from the Claude app |
+
+### Energy
+
+Hidden, Spectrum stays under 1% CPU and about 40 MB of memory: the pointer isn't polled while
+the island is hidden, timers allow coalescing, and the players are asked only every few seconds
+(their own notifications report changes instantly). Animations run only while visible.
+
+Tracking Claude app chats is the expensive part: Spectrum reads the app's accessibility tree,
+and Electron keeps that tree up to date while it is read. Reads drop to every 10 s while Claude
+is in the background and pause on battery by default; turn chats off in Settings to avoid the
+cost entirely.
 | Automation → Spotify / Music | Reading the current track and sending play, pause, next, previous |
 
 While Spectrum runs from a terminal, macOS attributes these permissions to the terminal app.

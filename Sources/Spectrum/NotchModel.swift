@@ -27,9 +27,22 @@ final class NotchModel {
 
     @ObservationIgnored var onCommand: (MediaCommand) -> Void = { _ in }
     @ObservationIgnored var onInstallHooks: () -> Void = {}
+    @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
 
     init(geometry: NotchGeometry) {
         self.geometry = geometry
+    }
+
+    /// Runs a control's action with a light tap under the finger.
+    func perform(_ command: MediaCommand) {
+        onHaptic(.tap)
+        onCommand(command)
+    }
+
+    func select(_ newTab: AgentsTab) {
+        guard tab != newTab else { return }
+        onHaptic(.tap)
+        tab = newTab
     }
 
     private func updateMode() {
@@ -40,7 +53,9 @@ final class NotchModel {
             isHovering: isHovering,
             agentsOpen: agentsOpen
         )
-        if next != mode { mode = next }
+        guard next != mode else { return }
+        if let cue = HapticCue.forTransition(from: mode, to: next) { onHaptic(cue) }
+        mode = next
     }
 }
 

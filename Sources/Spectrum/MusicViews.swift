@@ -98,7 +98,7 @@ struct ExpandedMusicView: View {
                             PlayerIcon(bundleID: track.bundleID)
                         }
                         ProgressRow(track: track, accent: model.accent)
-                        Controls(isPlaying: track.isPlaying, send: model.onCommand)
+                        Controls(isPlaying: track.isPlaying, send: model.perform)
                     }
                 }
                 .padding(.horizontal, 20)

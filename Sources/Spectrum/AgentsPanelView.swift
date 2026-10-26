@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Opened with ⌘⌘: who is doing what, as a list or as an office.
 struct AgentsPanelView: View {
-    @Bindable var model: NotchModel
+    let model: NotchModel
 
     private var waiting: Int { model.sessions.filter { $0.activity == .waitingForUser }.count }
     private var working: Int { model.sessions.filter { $0.activity.isWorking }.count }
@@ -12,7 +12,7 @@ struct AgentsPanelView: View {
         VStack(spacing: 0) {
             // Header lives on the ears around the hardware notch.
             HStack(spacing: 0) {
-                TabSwitcher(tab: $model.tab, count: model.sessions.count)
+                TabSwitcher(tab: model.tab, count: model.sessions.count, select: model.select)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer().frame(width: model.geometry.notch.width)
                 StatusSummary(working: working, waiting: waiting)
@@ -40,8 +40,9 @@ struct AgentsPanelView: View {
 }
 
 private struct TabSwitcher: View {
-    @Binding var tab: AgentsTab
+    let tab: AgentsTab
     let count: Int
+    let select: (AgentsTab) -> Void
 
     var body: some View {
         HStack(spacing: 4) {
@@ -56,7 +57,7 @@ private struct TabSwitcher: View {
 
     private func item(_ value: AgentsTab, title: String, symbol: String) -> some View {
         Button {
-            withAnimation(.snappy(duration: 0.2)) { tab = value }
+            withAnimation(.snappy(duration: 0.2)) { select(value) }
         } label: {
             Label(title, systemImage: symbol)
                 .font(.system(size: 11, weight: .semibold))

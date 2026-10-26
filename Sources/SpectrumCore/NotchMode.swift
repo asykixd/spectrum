@@ -1,5 +1,5 @@
 /// What the notch shows, mirroring Dynamic Island states.
-public enum NotchMode: Equatable, Sendable {
+public enum NotchMode: Hashable, Sendable {
     /// Nothing outside the hardware notch: Spectrum looks like it isn't running.
     case hidden
     /// Music is playing: artwork and waveform on the notch ears.

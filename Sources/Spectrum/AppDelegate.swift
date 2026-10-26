@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var agents: AgentMonitor?
     private var shortcuts: ShortcutMonitor?
     private var hoverTimer: Timer?
+    private var scrollMonitor: Any?
+    private var swipe = SwipeDetector()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main
@@ -45,6 +47,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.contentView = NSHostingView(rootView: NotchRootView(model: model))
         panel.orderFrontRegardless()
 
+        // Felt only on Force Touch trackpads, and only while a finger is on them.
+        model.onHaptic = { cue in
+            let pattern: NSHapticFeedbackManager.FeedbackPattern =
+                switch cue {
+                case .expand: .levelChange
+                case .collapse: .alignment
+                case .tap: .generic
+                }
+            NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
+        }
+
         let nowPlaying = NowPlayingMonitor(model: model)
         model.onCommand = { [weak nowPlaying] in nowPlaying?.send($0) }
         nowPlaying.start()
@@ -63,6 +76,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         shortcuts.start()
         requestAccessibilityIfNeeded()
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) {
+            [weak self] event in
+            MainActor.assumeIsolated { self?.handleScroll(event) }
+            return event
+        }
 
         hoverTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20, repeats: true) {
             [weak self] _ in
@@ -89,6 +107,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if model.isHovering != hovering { model.isHovering = hovering }
         let interactive = model.mode == .expanded || model.mode == .agents
         if panel.ignoresMouseEvents == interactive { panel.ignoresMouseEvents = !interactive }
+    }
+
+    /// Two-finger swipe across the expanded player changes the track, like flicking a card.
+    private func handleScroll(_ event: NSEvent) {
+        guard let model, model.mode == .expanded, event.momentumPhase.isEmpty else { return }
+        let phase: SwipeDetector.Phase
+        if event.phase.contains(.began) {
+            phase = .began
+        } else if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            phase = .ended
+        } else if event.phase.contains(.changed) {
+            phase = .changed
+        } else {
+            return
+        }
+        // With natural scrolling the deltas follow the content, not the fingers.
+        let sign = event.isDirectionInvertedFromDevice ? 1.0 : -1.0
+        let direction = swipe.handle(
+            deltaX: sign * event.scrollingDeltaX, deltaY: event.scrollingDeltaY, phase: phase)
+        switch direction {
+        case .left: model.perform(.nextTrack)
+        case .right: model.perform(.previousTrack)
+        case nil: break
+        }
     }
 
     /// Global ⌘ and Esc monitoring needs Accessibility; macOS shows its own prompt once.

@@ -1,8 +1,9 @@
 name: CI
 
-# Manual-only while the repo is private: macOS runner minutes are billed 10x on private repos.
-# Restore the push/pull_request triggers when the repo goes public.
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:

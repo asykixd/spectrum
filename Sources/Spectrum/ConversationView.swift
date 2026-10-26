@@ -22,7 +22,7 @@ struct ConversationView: View {
                         .background(Circle().fill(.white.opacity(0.1)))
                 }
                 .buttonStyle(.plain)
-                AgentAvatar(session: session)
+                AgentAvatar(session: session, style: model.settings.characters)
                     .scaleEffect(0.8)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(session.projectName)

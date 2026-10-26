@@ -33,7 +33,7 @@ struct AgentsPanelView: View {
                         SessionsListView(model: model)
                     }
                 case .office:
-                    OfficeView(sessions: model.sessions)
+                    OfficeView(model: model)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
             }
@@ -163,7 +163,8 @@ struct SessionsListView: View {
                     .padding(.leading, 4)
                 ForEach(sessions) { session in
                     SessionRow(
-                        session: session, hovering: model.hoveredSessionID == session.id,
+                        session: session, style: model.settings.characters,
+                        hovering: model.hoveredSessionID == session.id,
                         hover: { inside in
                             if inside {
                                 model.hoveredSessionID = session.id
@@ -211,6 +212,7 @@ struct SessionsListView: View {
 
 private struct SessionRow: View {
     let session: AgentSession
+    let style: SpectrumSettings.CharacterStyle
     let hovering: Bool
     let hover: (Bool) -> Void
     let open: () -> Void
@@ -220,7 +222,7 @@ private struct SessionRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AgentAvatar(session: session)
+            AgentAvatar(session: session, style: style)
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.projectName)
                     .font(.system(size: 13, weight: .semibold))

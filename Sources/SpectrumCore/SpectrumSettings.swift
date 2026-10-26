@@ -8,6 +8,12 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         case doubleControl
     }
 
+    public enum CharacterStyle: String, Codable, CaseIterable, Sendable {
+        /// The Claude Code mascot, one accessory per agent.
+        case clawd
+        case people
+    }
+
     public var showMusic = true
     public var showClaudeChats = true
     /// How long a Claude app chat stays listed after it was last open.
@@ -18,6 +24,7 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     public var staleAgentMinutes = 60
     /// Lets the conversation view send prompts to idle Claude Code sessions.
     public var replyFromPanel = true
+    public var characters: CharacterStyle = .clawd
 
     public init() {}
 
@@ -42,6 +49,9 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         replyFromPanel =
             try container.decodeIfPresent(Bool.self, forKey: .replyFromPanel)
             ?? defaults.replyFromPanel
+        characters =
+            (try? container.decodeIfPresent(CharacterStyle.self, forKey: .characters))
+            ?? defaults.characters
     }
 
     public static func load(from defaults: UserDefaults, key: String = "settings")

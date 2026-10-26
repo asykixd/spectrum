@@ -36,4 +36,5 @@ private func session(_ kind: AgentSession.Kind, _ activity: AgentActivity) -> Ag
     let settings = try JSONDecoder().decode(SpectrumSettings.self, from: Data(#"{}"#.utf8))
 
     #expect(settings.replyFromPanel)
+    #expect(settings.characters == .clawd)
 }

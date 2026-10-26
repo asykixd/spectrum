@@ -19,9 +19,14 @@ struct PixelCanvas {
     let origin: CGPoint
 
     func fill(_ x: Double, _ y: Double, _ width: Double, _ height: Double, _ color: Color) {
+        // Edges snapped to the Retina half-point grid, so neighbouring pixels share an edge
+        // exactly and anti-aliasing doesn't draw seams between them.
+        func snap(_ value: CGFloat) -> CGFloat { (value * 2).rounded() / 2 }
+        let minX = snap(origin.x + x * pixel)
+        let minY = snap(origin.y + y * pixel)
         let rect = CGRect(
-            x: origin.x + x * pixel, y: origin.y + y * pixel, width: width * pixel,
-            height: height * pixel)
+            x: minX, y: minY, width: snap(origin.x + (x + width) * pixel) - minX,
+            height: snap(origin.y + (y + height) * pixel) - minY)
         context.fill(Path(rect), with: .color(color))
     }
 
@@ -108,30 +113,93 @@ enum ClaudeLook {
     ]
 }
 
+/// Clawd, the Claude Code mascot: a terracotta block with two eyes and stubby arms.
+enum ClawdLook {
+    static let body = Color(hex: 0xD97757)
+
+    static let awake: [String] = [
+        ".ooooooo.",
+        ".okoooko.",
+        ".okoooko.",
+        "ooooooooo",
+        ".ooooooo.",
+    ]
+    /// Arms up: alternated with `awake` while the agent types.
+    static let typing: [String] = [
+        ".ooooooo.",
+        ".okoooko.",
+        "ookoookoo",
+        ".ooooooo.",
+        ".ooooooo.",
+    ]
+    static let sleeping: [String] = [
+        ".ooooooo.",
+        ".ooooooo.",
+        ".ocoooco.",
+        "ooooooooo",
+        ".ooooooo.",
+    ]
+
+    /// Small accessories so several Clawds in one office can be told apart.
+    static let accessories: [[String]] = [
+        [],
+        ["..ttttt.."],
+        [".kkkkkkk."],
+        ["...t.t...", "....t...."],
+        ["....g....", "...g.g..."],
+    ]
+
+    static func palette(accent: Color) -> [Character: Color] {
+        [
+            "o": body, "k": Color(hex: 0x1B1B24), "c": Color(hex: 0x8A3F28), "t": accent,
+            "g": Color(hex: 0x3FA34D),
+        ]
+    }
+
+    /// Headphone cups sit beside the head rather than above it.
+    static func hasEarCups(_ accessory: Int) -> Bool { accessory == 2 }
+}
+
 /// The agent's face, used as an avatar in the sessions list.
 struct AgentAvatar: View {
     let session: AgentSession
+    var style: SpectrumSettings.CharacterStyle = .clawd
 
     var body: some View {
         Canvas { context, size in
             let pixel = size.width / 11
             let canvas = PixelCanvas(
                 context: context, pixel: pixel, origin: CGPoint(x: pixel, y: pixel * 1.5))
-            let palette: [Character: Color]
-            let head: [String]
-            switch session.kind {
-            case .chat:
-                palette = ClaudeLook.palette
-                head = ClaudeLook.head
-            case .code:
-                palette = AgentLook(seed: session.appearanceSeed).palette()
-                head = session.activity == .idle ? AgentLook.sleepingHead : AgentLook.head
+            switch (style, session.kind) {
+            case (.clawd, _):
+                let accent = AgentLook(seed: session.appearanceSeed).shirt
+                let accessory = session.kind == .chat ? 0 : ClawdLook.accessoryIndex(session)
+                canvas.sprite(
+                    session.activity == .idle ? ClawdLook.sleeping : ClawdLook.awake, x: 0, y: 2,
+                    palette: ClawdLook.palette(accent: accent))
+                canvas.sprite(
+                    ClawdLook.accessories[accessory], x: 0,
+                    y: 2 - Double(ClawdLook.accessories[accessory].count),
+                    palette: ClawdLook.palette(accent: accent))
+            case (.people, .chat):
+                canvas.sprite(ClaudeLook.head, x: 0, y: 0, palette: ClaudeLook.palette)
+                canvas.sprite(
+                    Array(AgentLook.body.prefix(2)), x: 0, y: 6, palette: ClaudeLook.palette)
+            case (.people, .code):
+                let palette = AgentLook(seed: session.appearanceSeed).palette()
+                let head = session.activity == .idle ? AgentLook.sleepingHead : AgentLook.head
+                canvas.sprite(head, x: 0, y: 0, palette: palette)
+                canvas.sprite(Array(AgentLook.body.prefix(2)), x: 0, y: 6, palette: palette)
             }
-            canvas.sprite(head, x: 0, y: 0, palette: palette)
-            canvas.sprite(Array(AgentLook.body.prefix(2)), x: 0, y: 6, palette: palette)
         }
         .frame(width: 30, height: 30)
         .background(Circle().fill(.white.opacity(0.08)))
         .clipShape(Circle())
+    }
+}
+
+extension ClawdLook {
+    static func accessoryIndex(_ session: AgentSession) -> Int {
+        Int((session.appearanceSeed >> 24) % UInt64(accessories.count))
     }
 }

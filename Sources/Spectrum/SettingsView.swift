@@ -18,6 +18,10 @@ struct SettingsView: View {
                 }
             }
             Section("Agents") {
+                Picker("Office characters", selection: $model.settings.characters) {
+                    Text("Clawd").tag(SpectrumSettings.CharacterStyle.clawd)
+                    Text("People").tag(SpectrumSettings.CharacterStyle.people)
+                }
                 Toggle(
                     "Reply to idle Claude Code sessions from the panel",
                     isOn: $model.settings.replyFromPanel)

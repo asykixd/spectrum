@@ -2,108 +2,184 @@ import SpectrumCore
 import SwiftUI
 
 /// Pixel-art office in three zones: desks for Claude Code agents at work, a meeting room for
-/// Claude app chats, and a lounge where idle agents doze off.
+/// Claude app chats, and a lounge where idle agents doze off. Agents react to the pointer:
+/// hovering highlights one, clicking opens its conversation.
 struct OfficeView: View {
-    let sessions: [AgentSession]
+    let model: NotchModel
 
     var body: some View {
+        let layout = OfficeLayout(sessions: model.sessions)
         TimelineView(.animation(minimumInterval: 1.0 / 12)) { timeline in
             Canvas { context, size in
-                OfficeScene(sessions: sessions, date: timeline.date).draw(in: context, size: size)
+                OfficeScene(
+                    layout: layout, date: timeline.date, hoveredID: model.officeHoverID,
+                    style: model.settings.characters
+                ).draw(in: context, size: size)
             }
         }
+        .overlay {
+            GeometryReader { proxy in
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onContinuousHover { phase in
+                        hover(phase, layout: layout, size: proxy.size)
+                    }
+                    .onTapGesture { location in
+                        let point = OfficeLayout.gridPoint(location, in: proxy.size)
+                        if let session = layout.placement(at: point)?.session {
+                            model.open(session, fromOffice: true)
+                        }
+                    }
+            }
+        }
+    }
+
+    private func hover(_ phase: HoverPhase, layout: OfficeLayout, size: CGSize) {
+        var id: String?
+        if case .active(let location) = phase {
+            id = layout.placement(at: OfficeLayout.gridPoint(location, in: size))?.session.id
+        }
+        guard id != model.officeHoverID else { return }
+        model.officeHoverID = id
+        if id == nil { NSCursor.arrow.set() } else { NSCursor.pointingHand.set() }
     }
 }
 
 struct OfficeScene {
-    static let columns = 160.0
-    static let rows = 78.0
+    static let columns = OfficeLayout.columns
+    static let rows = OfficeLayout.rows
     static let wallHeight = 24.0
-    static let deskColumns = [4.0, 36.0, 68.0]
-    static let deskRows = [40.0, 63.0]
-    static let deskWidth = 28.0
+    static let deskWidth = OfficeLayout.deskWidth
     /// Glass wall between the open space and the meeting room / lounge.
     static let partitionX = 101.0
-    static let meetingSlots = [106.0, 132.0]
-    static let meetingTop = 40.0
-    static let meetingWidth = 24.0
-    static let loungeY = 54.0
-    static let sofaSeats = [109.0, 121.0, 133.0]
+    static let meetingWidth = OfficeLayout.meetingWidth
+    static let loungeY = OfficeLayout.loungeY
 
-    let sessions: [AgentSession]
+    let layout: OfficeLayout
     let date: Date
+    var hoveredID: String?
+    var style: SpectrumSettings.CharacterStyle = .clawd
 
     private var time: Double { date.timeIntervalSinceReferenceDate }
 
     func draw(in context: GraphicsContext, size: CGSize) {
-        let pixel = min(size.width / Self.columns, size.height / Self.rows)
-        let origin = CGPoint(
-            x: (size.width - Self.columns * pixel) / 2, y: (size.height - Self.rows * pixel) / 2)
+        let (pixel, origin) = OfficeLayout.fit(in: size)
         let canvas = PixelCanvas(context: context, pixel: pixel, origin: origin)
 
         drawWall(canvas)
         drawFloor(canvas)
         drawZones(canvas)
 
-        let groups = SessionGroups(sessions)
-        drawDesks(canvas, sessions: groups.code)
-        drawMeetingRoom(canvas, chats: groups.chats)
-        drawLounge(canvas, sessions: groups.afk)
+        let taken = layout.placements.filter { $0.zone == .desk }.map(\.origin)
+        for slot in OfficeLayout.deskSlots where !taken.contains(slot) {
+            drawEmptyDesk(canvas, x: slot.x, top: slot.y)
+        }
+        let busyTables = Set(layout.placements.filter { $0.zone == .meeting }.map(\.origin.x))
+        for x in OfficeLayout.meetingSlots where !busyTables.contains(x) {
+            drawMeetingTable(canvas, x: x, top: OfficeLayout.meetingTop)
+        }
+        drawSofaBack(canvas)
 
-        if groups.isEmpty {
+        if let hovered = layout.placements.first(where: { $0.session.id == hoveredID }) {
+            drawHighlight(canvas, hovered.hitArea)
+        }
+        for placement in layout.placements {
+            let origin = placement.origin
+            switch placement.zone {
+            case .desk:
+                drawWorkstation(canvas, x: origin.x, top: origin.y, session: placement.session)
+            case .meeting:
+                drawMeeting(canvas, x: origin.x, top: origin.y, session: placement.session)
+            case .sofa:
+                drawLounger(canvas, x: origin.x, session: placement.session)
+            }
+        }
+        drawSofaFront(canvas)
+
+        if layout.hiddenCode > 0 {
+            label(canvas, "+\(layout.hiddenCode) at work", x: 50, y: 76, size: 2.2)
+        }
+        if layout.hiddenChats > 0 {
+            label(canvas, "+\(layout.hiddenChats) chats", x: 150, y: 27, size: 2)
+        }
+        if layout.hiddenAFK > 0 {
+            label(canvas, "+\(layout.hiddenAFK) AFK", x: 150, y: Self.loungeY + 1, size: 2)
+        }
+        if layout.placements.isEmpty {
             label(canvas, "No agents at work", x: 50, y: 34, size: 3, opacity: 0.75)
         }
     }
 
-    private func drawDesks(_ canvas: PixelCanvas, sessions: [AgentSession]) {
-        let capacity = Self.deskColumns.count * Self.deskRows.count
-        for index in 0..<capacity {
-            let x = Self.deskColumns[index % Self.deskColumns.count]
-            let top = Self.deskRows[index / Self.deskColumns.count]
-            if index < sessions.count {
-                drawWorkstation(canvas, x: x, top: top, session: sessions[index])
-            } else {
-                drawEmptyDesk(canvas, x: x, top: top)
-            }
-        }
-        if sessions.count > capacity {
-            label(canvas, "+\(sessions.count - capacity) at work", x: 50, y: 76, size: 2.2)
-        }
+    /// A soft spotlight under the agent the pointer is on.
+    private func drawHighlight(_ canvas: PixelCanvas, _ area: CGRect) {
+        let rect = CGRect(
+            x: canvas.origin.x + area.minX * canvas.pixel,
+            y: canvas.origin.y + area.minY * canvas.pixel,
+            width: area.width * canvas.pixel, height: area.height * canvas.pixel)
+        let shape = RoundedRectangle(cornerRadius: canvas.pixel * 2).path(in: rect)
+        canvas.context.fill(shape, with: .color(.white.opacity(0.1)))
+        canvas.context.stroke(
+            shape, with: .color(.white.opacity(0.55)), lineWidth: canvas.pixel * 0.5)
     }
 
-    private func drawMeetingRoom(_ canvas: PixelCanvas, chats: [AgentSession]) {
-        for (index, x) in Self.meetingSlots.enumerated() {
-            if index < chats.count {
-                drawMeeting(canvas, x: x, top: Self.meetingTop, session: chats[index])
-            } else {
-                drawMeetingTable(canvas, x: x, top: Self.meetingTop)
-            }
-        }
-        if chats.count > Self.meetingSlots.count {
-            label(
-                canvas, "+\(chats.count - Self.meetingSlots.count) chats", x: 150, y: 27,
-                size: 2)
-        }
-    }
-
-    private func drawLounge(_ canvas: PixelCanvas, sessions: [AgentSession]) {
+    private func drawSofaBack(_ canvas: PixelCanvas) {
         let y = Self.loungeY
-        // Sofa back, then the agents sinking into it, then the seat cushions over their laps.
         canvas.fill(106, y + 4, 40, 7, Color(hex: 0x4E3F7A))
         canvas.fill(106, y + 4, 40, 1, Color(hex: 0x6650A0))
-        for (index, x) in Self.sofaSeats.enumerated() where index < sessions.count {
-            let session = sessions[index]
-            let look = AgentLook(seed: session.appearanceSeed)
-            // Heads loll at different moments so the lounge doesn't move in lockstep.
-            let nod = sin(time * 0.8 + Double(session.appearanceSeed % 7)) > 0.6 ? 1.0 : 0.0
-            canvas.sprite(AgentLook.sleepingHead, x: x, y: y + 3 + nod, palette: look.palette())
-            canvas.sprite(AgentLook.body, x: x, y: y + 9, palette: look.palette())
-            drawBubble(
-                canvas, x: x + 6, headTop: y + 3, activity: .idle,
-                seed: Double(session.appearanceSeed % 1000))
-            label(
-                canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 21, size: 1.9)
+    }
+
+    private func drawLounger(_ canvas: PixelCanvas, x: Double, session: AgentSession) {
+        let y = Self.loungeY
+        // Heads loll at different moments so the lounge doesn't move in lockstep.
+        let nod = sin(time * 0.8 + Double(session.appearanceSeed % 7)) > 0.6 ? 1.0 : 0.0
+        let headTop = drawCharacter(
+            canvas, session: session, x: x, bottom: y + 12, sleeping: true, lift: nod)
+        drawBubble(
+            canvas, x: x + 6, headTop: headTop, activity: .idle,
+            seed: Double(session.appearanceSeed % 1000))
+        label(canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 21, size: 1.9)
+    }
+
+    /// Draws an agent whose lowest visible row ends at `bottom` and returns the top of its
+    /// head, where bubbles attach.
+    @discardableResult
+    private func drawCharacter(
+        _ canvas: PixelCanvas, session: AgentSession, x: Double, bottom: Double,
+        sleeping: Bool, lift: Double, typing: Bool = false
+    ) -> Double {
+        let look = AgentLook(seed: session.appearanceSeed)
+        switch (style, session.kind) {
+        case (.clawd, _):
+            let palette = ClawdLook.palette(accent: look.shirt)
+            let frame = sleeping ? ClawdLook.sleeping : typing ? ClawdLook.typing : ClawdLook.awake
+            let top = bottom - Double(frame.count) + lift
+            canvas.sprite(frame, x: x, y: top, palette: palette)
+            // Chats in the lounge are Claude itself, so no accessory.
+            let accessory = session.kind == .chat ? 0 : ClawdLook.accessoryIndex(session)
+            let rows = ClawdLook.accessories[accessory]
+            canvas.sprite(rows, x: x, y: top - Double(rows.count), palette: palette)
+            if ClawdLook.hasEarCups(accessory) {
+                canvas.fill(x - 0.5, top + 1, 1, 2, look.shirt)
+                canvas.fill(x + 8.5, top + 1, 1, 2, look.shirt)
+            }
+            return top - Double(rows.count)
+        case (.people, .chat):
+            let top = bottom - 9 + lift
+            canvas.sprite(ClaudeLook.head, x: x, y: top, palette: ClaudeLook.palette)
+            canvas.sprite(AgentLook.body, x: x, y: bottom - 3, palette: ClaudeLook.palette)
+            return top
+        case (.people, .code):
+            let top = bottom - 9 + lift
+            let head = sleeping ? AgentLook.sleepingHead : AgentLook.head
+            canvas.sprite(head, x: x, y: top, palette: look.palette())
+            canvas.sprite(AgentLook.body, x: x, y: bottom - 3, palette: look.palette())
+            return top
         }
+    }
+
+    /// Seat cushions drawn over the loungers' laps, then the arms and the plant.
+    private func drawSofaFront(_ canvas: PixelCanvas) {
+        let y = Self.loungeY
         canvas.fill(105, y + 11, 42, 4, Color(hex: 0x6E5BA6))
         canvas.fill(105, y + 11, 42, 1, Color(hex: 0x8470C0))
         canvas.fill(103, y + 7, 3, 8, Color(hex: 0x5A4890))
@@ -112,7 +188,6 @@ struct OfficeScene {
         canvas.fill(144, y + 15, 2, 2, Color(hex: 0x2E2440))
         canvas.fill(104, y + 17, 46, 0.7, .black.opacity(0.25))
 
-        // A plant at the end of the sofa.
         let sway = sin(time * 1.2) > 0 ? 0.0 : 0.5
         canvas.sprite(
             ["..l.l...", ".lllll.l", "llllllll", ".llDlll.", "..lDll..", "...D...."],
@@ -121,11 +196,6 @@ struct OfficeScene {
         canvas.fill(151, y + 10, 8, 1, Color(hex: 0xD9804F))
         canvas.fill(152, y + 11, 6, 5, Color(hex: 0xC46A3F))
         canvas.fill(152, y + 16, 6, 0.6, .black.opacity(0.25))
-        if sessions.count > Self.sofaSeats.count {
-            label(
-                canvas, "+\(sessions.count - Self.sofaSeats.count) AFK", x: 150, y: y + 1,
-                size: 2)
-        }
     }
 
     // MARK: Room
@@ -295,15 +365,14 @@ struct OfficeScene {
         let characterX = x + 16
         let bob = activity.isWorking && beat ? 1.0 : 0.0
         let slouch = activity == .idle ? 1.0 : 0.0
-        let headTop = top - 9 + bob + slouch
-        let head = activity == .idle ? AgentLook.sleepingHead : AgentLook.head
-        canvas.sprite(head, x: characterX, y: headTop, palette: look.palette())
-        canvas.sprite(AgentLook.body, x: characterX, y: top - 3, palette: look.palette())
+        let headTop = drawCharacter(
+            canvas, session: session, x: characterX, bottom: top,
+            sleeping: activity == .idle, lift: bob + slouch, typing: activity.isWorking && beat)
 
         drawMonitor(canvas, x: x + 2, top: top - 8, activity: activity, seed: seed)
         drawDesk(canvas, x: x, top: top)
 
-        if activity.isWorking {
+        if activity.isWorking, style == .people {
             let left = beat ? 1.0 : 0.0
             canvas.fill(characterX + 1, top - left, 1, 1, look.skin)
             canvas.fill(characterX + 7, top - (1 - left), 1, 1, look.skin)
@@ -423,14 +492,22 @@ struct OfficeScene {
         let beat = Int(time * 5).isMultiple(of: 2)
         let headTop = top - 9
 
+        // You are always a person at the table; Claude matches the office's character style.
         canvas.fill(x, top - 6, 10, 6, Color(hex: 0x3A3F55))
         canvas.fill(x + 14, top - 6, 10, 6, Color(hex: 0x3A3F55))
         canvas.sprite(AgentLook.head, x: x, y: headTop, palette: user.palette())
         canvas.sprite(AgentLook.body, x: x, y: top - 3, palette: user.palette())
         let claudeBob = talking && beat ? 1.0 : 0.0
-        canvas.sprite(
-            ClaudeLook.head, x: x + 15, y: headTop + claudeBob, palette: ClaudeLook.palette)
-        canvas.sprite(AgentLook.body, x: x + 15, y: top - 3, palette: ClaudeLook.palette)
+        switch style {
+        case .clawd:
+            canvas.sprite(
+                talking && beat ? ClawdLook.typing : ClawdLook.awake, x: x + 15,
+                y: top - 5 + claudeBob, palette: ClawdLook.palette(accent: .clear))
+        case .people:
+            canvas.sprite(
+                ClaudeLook.head, x: x + 15, y: headTop + claudeBob, palette: ClaudeLook.palette)
+            canvas.sprite(AgentLook.body, x: x + 15, y: top - 3, palette: ClaudeLook.palette)
+        }
         drawMeetingTable(canvas, x: x, top: top)
         canvas.fill(x + 8, top - 2, 2, 2, Color(hex: 0xF4F1EA))
         canvas.fill(x + 14, top - 2, 2, 2, ClaudeLook.orange)

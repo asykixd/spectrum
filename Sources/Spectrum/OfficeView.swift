@@ -241,7 +241,10 @@ struct OfficeScene {
             drawBubble(
                 canvas, x: x + 6, headTop: headTop, activity: .idle,
                 seed: Double(session.appearanceSeed % 1000))
-            label(canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 21, size: 1.9)
+            // Inside the rug, clear of the office's rounded bottom edge.
+            label(
+                canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 19.5,
+                size: 1.9)
         }
     }
 

@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: NotchModel?
     private var nowPlaying: NowPlayingMonitor?
     private var agents: AgentMonitor?
+    private var chats: ClaudeChatMonitor?
+    private var dismissal = HoverDismissal()
     private var shortcuts: ShortcutMonitor?
     private var hoverTimer: Timer?
     private var scrollMonitor: Any?
@@ -53,7 +55,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 switch cue {
                 case .expand: .levelChange
                 case .collapse: .alignment
-                case .tap: .generic
                 }
             NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
         }
@@ -64,6 +65,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let agents = AgentMonitor(model: model)
         agents.start()
+        let chats = ClaudeChatMonitor(model: model)
+        chats.start()
 
         let shortcuts = ShortcutMonitor(
             onDoubleCommand: { [weak model] in model?.agentsOpen.toggle() },
@@ -91,6 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.model = model
         self.nowPlaying = nowPlaying
         self.agents = agents
+        self.chats = chats
         self.shortcuts = shortcuts
     }
 
@@ -105,6 +109,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let rect = NotchLayout.visibleRect(for: model.mode, geometry: model.geometry)
         let hovering = rect.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation)
         if model.isHovering != hovering { model.isHovering = hovering }
+        if dismissal.update(isOpen: model.mode == .agents, isInside: hovering) {
+            model.agentsOpen = false
+        }
         let interactive = model.mode == .expanded || model.mode == .agents
         if panel.ignoresMouseEvents == interactive { panel.ignoresMouseEvents = !interactive }
     }

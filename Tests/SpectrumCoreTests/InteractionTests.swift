@@ -41,3 +41,23 @@ private func swipe(_ deltas: [(Double, Double)], detector: SwipeDetector = .init
 @Test func shortSwipeDoesNothing() {
     #expect(swipe([(-20, 0), (-10, 0)]).isEmpty)
 }
+
+@Test func panelClosesWhenPointerLeavesAfterVisiting() {
+    var dismissal = HoverDismissal()
+    let beforeVisit = dismissal.update(isOpen: true, isInside: false)
+    let inside = dismissal.update(isOpen: true, isInside: true)
+    let left = dismissal.update(isOpen: true, isInside: false)
+
+    #expect(!beforeVisit)
+    #expect(!inside)
+    #expect(left)
+}
+
+@Test func reopenedPanelWaitsForANewVisit() {
+    var dismissal = HoverDismissal()
+    _ = dismissal.update(isOpen: true, isInside: true)
+    _ = dismissal.update(isOpen: false, isInside: false)
+    let reopened = dismissal.update(isOpen: true, isInside: false)
+
+    #expect(!reopened)
+}

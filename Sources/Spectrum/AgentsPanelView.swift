@@ -162,15 +162,15 @@ private struct SessionRow: View {
                     .foregroundStyle(.white)
                 HStack(spacing: 6) {
                     StatusDot(activity: session.activity)
-                    Text(session.activity.summary)
+                    Text(session.statusText)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(isWaiting ? Color(hex: 0xF5B544) : .white.opacity(0.6))
                 }
             }
             .lineLimit(1)
             Spacer()
-            if let cwd = session.cwd {
-                Text(abbreviated(cwd))
+            if let place = session.kind == .chat ? "Claude app" : session.cwd.map(abbreviated) {
+                Text(place)
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.35))
                     .lineLimit(1)
@@ -228,6 +228,7 @@ private struct StatusDot: View {
     private var color: Color {
         switch activity {
         case .usingTool: Color(hex: 0x4ADE80)
+        case .responding: ClaudeLook.orange
         case .thinking: Color(hex: 0x60A5FA)
         case .waitingForUser: Color(hex: 0xF59E0B)
         case .idle, .finished: .white.opacity(0.35)

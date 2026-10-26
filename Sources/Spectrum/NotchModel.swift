@@ -17,7 +17,10 @@ final class NotchModel {
     var nowPlaying: NowPlaying? { didSet { updateMode() } }
     var artwork: NSImage?
     var accent: Color = .white
-    var sessions: [AgentSession] = []
+    var codeSessions: [AgentSession] = []
+    var chatSessions: [AgentSession] = []
+    /// Chats first: they are the conversations the user is most likely looking at.
+    var sessions: [AgentSession] { chatSessions + codeSessions }
     var agentsOpen = false { didSet { updateMode() } }
     var isHovering = false { didSet { updateMode() } }
     var tab: AgentsTab = .sessions
@@ -33,15 +36,12 @@ final class NotchModel {
         self.geometry = geometry
     }
 
-    /// Runs a control's action with a light tap under the finger.
+    /// Player controls stay silent on the trackpad: haptics there felt noisy.
     func perform(_ command: MediaCommand) {
-        onHaptic(.tap)
         onCommand(command)
     }
 
     func select(_ newTab: AgentsTab) {
-        guard tab != newTab else { return }
-        onHaptic(.tap)
         tab = newTab
     }
 

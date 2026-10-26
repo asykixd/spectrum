@@ -4,8 +4,6 @@ public enum HapticCue: Equatable, Sendable {
     case expand
     /// The island shrinks back.
     case collapse
-    /// A control was pressed or a gesture recognised.
-    case tap
 
     /// Feedback for a mode change, or nil when the user likely isn't touching the trackpad
     /// (music starting or stopping on its own).

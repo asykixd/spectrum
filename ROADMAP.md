@@ -5,7 +5,7 @@
 - [x] Invisible when idle: with no music playing and the agents panel closed, nothing is drawn outside the hardware notch
 - [x] Now playing: track, artist, artwork and play/pause/next for Spotify and Apple Music (AppleScript)
 - [x] Compact live activity while music plays: artwork on the left ear, animated waveform on the right; expands on hover
-- [x] Trackpad haptics for island transitions and controls; two-finger swipe changes the track
+- [x] Trackpad haptics when the island opens and closes; two-finger swipe changes the track
 - [x] Double-tap ⌘ toggles the agents panel (global modifier-key monitor)
 - [x] Receive Claude Code hook events (local socket) and track sessions by `session_id`
 
@@ -13,6 +13,7 @@
 - [x] Agents panel, tab 1 — sessions list: each chat with its project, current activity and who is waiting for input
 - [x] Agents panel, tab 2 — pixel office: one character per session, desk screen shows the current activity
 - [x] Hook installer that adds Spectrum hooks to `~/.claude/settings.json`
+- [x] Claude app chats from the last 15 minutes as conversations in the office
 - [ ] Jump to the agent's terminal window from the sessions list
 - [ ] Codex support
 

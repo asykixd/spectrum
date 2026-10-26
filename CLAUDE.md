@@ -25,6 +25,8 @@ and Lumio-style pixel office showing AI coding agents' live activity. Nothing el
 ## Conventions
 - Keep logic in `SpectrumCore` so it's testable without a window server.
 - Agents are tracked via Claude Code hooks (stdin JSON: `session_id`, `hook_event_name`, `tool_name`, ...). `Spectrum hook` forwards it over `~/Library/Application Support/Spectrum/agent.sock`; it must stay silent on stdout and exit 0.
+- Claude app chats come from its accessibility tree (`ClaudeChatMonitor`, `ClaudeChatSnapshot`); keep chats for 15 minutes after last seen.
+- Haptics only on island open/close. The user explicitly does not want them on player controls or tab switches.
 - Now playing uses Spotify / Music AppleScript. Don't use MediaRemote or inject code into Apple binaries to bypass its entitlement check.
 - Permissions: users grant whatever is needed (Accessibility, Automation, media/private APIs like MediaRemote). Don't design around missing permissions; just request them.
 - Not sandboxed / not App Store — private frameworks are acceptable.

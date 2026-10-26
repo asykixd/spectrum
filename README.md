@@ -30,12 +30,13 @@ pixel-art office where every session sits at its own desk.
 | Invisible when idle, like Dynamic Island: nothing outside the hardware notch | Done |
 | Compact live activity while music plays: artwork and animated waveform tinted by the artwork | Done |
 | Hover to expand: title, artist, progress, previous / play-pause / next, source app icon | Done |
-| Spotify and Apple Music | Done |
-| Force Touch haptics on MacBook trackpads: island opens and closes, buttons, tabs, swipes | Done |
+| Spotify and Apple Music, with every featured artist on Spotify tracks | Done |
+| Force Touch haptics on MacBook trackpads when the island opens and closes | Done |
 | Two-finger swipe across the player: left for next track, right for previous | Done |
-| Double-tap <kbd>⌘</kbd> to open the agents panel; <kbd>Esc</kbd> or a click outside closes it | Done |
+| Double-tap <kbd>⌘</kbd> to open the agents panel; moving the pointer out, <kbd>Esc</kbd> or a click outside closes it | Done |
 | Sessions tab: every Claude Code session, what it is doing, who is waiting for you | Done |
 | Office tab: pixel-art office, one animated character per session, desk screen shows the activity | Done |
+| Claude app chats from the last 15 minutes: you and Claude at a table — thinking, answering, your turn | Done |
 | One-click Claude Code hook installer that keeps your existing hooks | Done |
 | Signed `.app` bundle | Planned |
 | Jump to an agent's terminal, Codex / Cursor / Copilot agents | Planned |
@@ -71,6 +72,8 @@ Then:
 - Play something in Spotify or Apple Music: the notch grows a live activity. Hover it for controls;
   swipe left or right with two fingers to change the track. On a MacBook trackpad you feel a light
   tap as the island opens and closes.
+- Chat in the Claude desktop app: the chat shows up next to your Claude Code sessions for 15
+  minutes after you last had it open.
 - Double-tap <kbd>⌘</kbd> to see your agents. Switch between **Sessions** and **Office**.
 - Nothing playing and the panel closed: Spectrum is invisible.
 
@@ -80,7 +83,7 @@ Spectrum runs as an accessory app with no Dock icon. To quit: `pkill -f Spectrum
 
 | Permission | Why |
 | --- | --- |
-| Accessibility | Watching <kbd>⌘</kbd> and <kbd>Esc</kbd> system-wide |
+| Accessibility | Watching <kbd>⌘</kbd> and <kbd>Esc</kbd> system-wide; reading chat state from the Claude app |
 | Automation → Spotify / Music | Reading the current track and sending play, pause, next, previous |
 
 While Spectrum runs from a terminal, macOS attributes these permissions to the terminal app.
@@ -102,6 +105,8 @@ flowchart LR
     CC[Claude Code] -- hook JSON --> Hook[Spectrum hook]
     Hook -- unix socket --> Agents[AgentMonitor<br/>SessionStore]
     Players[Spotify / Music] -- AppleScript --> Music[NowPlayingMonitor]
+    App[Claude app] -- Accessibility --> Chats[ClaudeChatMonitor]
+    Chats --> Model
     Keys[⌘⌘ / Esc] --> Model
     Agents --> Model[NotchModel<br/>NotchMode]
     Music --> Model
@@ -114,7 +119,12 @@ flowchart LR
 
 MediaRemote, which NotchNook-style apps used to read any player, no longer answers third-party
 apps since macOS 15.4, so Spectrum talks to Spotify and Apple Music through their AppleScript
-dictionaries.
+dictionaries. Spotify's dictionary reports only the first artist, so the full list comes from the
+track's public embed page.
+
+The Claude desktop app has no hooks. Spectrum reads its accessibility tree: a Stop button means
+Claude is answering, the page title names the chat. A chat that just finished answering is
+shown as your turn.
 
 ## Development
 

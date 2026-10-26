@@ -25,6 +25,8 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     /// Lets the conversation view send prompts to idle Claude Code sessions.
     public var replyFromPanel = true
     public var characters: CharacterStyle = .clawd
+    /// Stops reading the Claude app on battery unless the agents panel is open.
+    public var pauseChatsOnBattery = true
 
     public init() {}
 
@@ -52,6 +54,9 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         characters =
             (try? container.decodeIfPresent(CharacterStyle.self, forKey: .characters))
             ?? defaults.characters
+        pauseChatsOnBattery =
+            try container.decodeIfPresent(Bool.self, forKey: .pauseChatsOnBattery)
+            ?? defaults.pauseChatsOnBattery
     }
 
     public static func load(from defaults: UserDefaults, key: String = "settings")

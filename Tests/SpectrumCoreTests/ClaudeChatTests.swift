@@ -90,3 +90,22 @@ private func snapshot(_ chat: String?, generating: Bool = false) -> ClaudeChatSn
 
     #expect(later.map(\.id) == ["claude-chat-new"])
 }
+
+@Test func chatPollingSlowsDownWhenNobodyLooks() {
+    #expect(
+        ChatPollPolicy.interval(
+            panelOpen: true, claudeFrontmost: false, onBattery: true, pauseOnBattery: true) == 1)
+    #expect(
+        ChatPollPolicy.interval(
+            panelOpen: false, claudeFrontmost: true, onBattery: false, pauseOnBattery: true) == 2)
+    #expect(
+        ChatPollPolicy.interval(
+            panelOpen: false, claudeFrontmost: false, onBattery: false, pauseOnBattery: true)
+            == 10)
+    #expect(
+        ChatPollPolicy.interval(
+            panelOpen: false, claudeFrontmost: true, onBattery: true, pauseOnBattery: true) == nil)
+    #expect(
+        ChatPollPolicy.interval(
+            panelOpen: false, claudeFrontmost: true, onBattery: true, pauseOnBattery: false) == 2)
+}

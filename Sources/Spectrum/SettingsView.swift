@@ -25,7 +25,14 @@ struct SettingsView: View {
                 Toggle(
                     "Reply to idle Claude Code sessions from the panel",
                     isOn: $model.settings.replyFromPanel)
-                Toggle("Show chats from the Claude app", isOn: $model.settings.showClaudeChats)
+                Toggle(isOn: $model.settings.showClaudeChats) {
+                    Text("Show chats from the Claude app")
+                    Text(
+                        "Uses extra battery: Spectrum reads the Claude app's window, and the app keeps more work going while it's read."
+                    )
+                }
+                Toggle("Pause chat tracking on battery", isOn: $model.settings.pauseChatsOnBattery)
+                    .disabled(!model.settings.showClaudeChats)
                 Picker("Keep chats listed for", selection: $model.settings.chatRetentionMinutes) {
                     ForEach([5, 15, 30, 60], id: \.self) { Text("\($0) minutes").tag($0) }
                 }

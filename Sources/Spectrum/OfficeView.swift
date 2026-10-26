@@ -102,6 +102,10 @@ struct OfficeScene {
             drawLegs(canvas, x: placement.origin.x, y: Self.loungeY + 11, swing: swing)
         }
 
+        if darkness > 0 {
+            drawNightLighting(canvas)
+        }
+
         if layout.hiddenCode > 0 {
             label(canvas, "+\(layout.hiddenCode) at work", x: 50, y: 76, size: 2.2)
         }
@@ -114,6 +118,59 @@ struct OfficeScene {
         if layout.placements.isEmpty {
             label(canvas, "No agents at work", x: 50, y: 34, size: 3, opacity: 0.75)
         }
+    }
+
+    /// How dark the room is, from the Mac's clock: full night, dusk and dawn, or day.
+    private var darkness: Double {
+        let hour = Calendar.current.component(.hour, from: date)
+        if hour < 6 || hour >= 21 { return 0.5 }
+        if (18..<21).contains(hour) || (6..<8).contains(hour) { return 0.22 }
+        return 0
+    }
+
+    private func drawDeskLamp(_ canvas: PixelCanvas, x: Double, top: Double) {
+        canvas.fill(x, top - 1, 3, 1, Color(hex: 0x3A3F55))
+        canvas.fill(x + 1, top - 4, 1, 3, Color(hex: 0x3A3F55))
+        canvas.fill(x - 1, top - 5.5, 4, 1.5, Color(hex: 0xE8C46A))
+    }
+
+    /// Dims the room, then adds light back where it comes from: monitors in the colour of what
+    /// the agent is doing, desk lamps, the meeting table and the lounge. Drawn only while the
+    /// office is open, so it costs nothing in the background.
+    private func drawNightLighting(_ canvas: PixelCanvas) {
+        canvas.fill(0, 0, Self.columns, Self.rows, Color(hex: 0x070B22, opacity: darkness))
+
+        var light = canvas.context
+        light.blendMode = .plusLighter
+        func shine(_ x: Double, _ y: Double, radius: Double, _ color: Color, _ strength: Double) {
+            let center = canvas.point(x, y)
+            let size = radius * canvas.pixel
+            light.fill(
+                Path(
+                    ellipseIn: CGRect(
+                        x: center.x - size, y: center.y - size, width: size * 2, height: size * 2)),
+                with: .radialGradient(
+                    Gradient(colors: [color.opacity(strength * darkness), color.opacity(0)]),
+                    center: center, startRadius: 0, endRadius: size))
+        }
+
+        let warm = Color(hex: 0xFFC56B)
+        for placement in layout.placements {
+            let origin = placement.origin
+            switch placement.zone {
+            case .desk:
+                let screen = glow(for: placement.session.activity)
+                shine(
+                    origin.x + 8, origin.y - 4.5, radius: 11, screen == .clear ? .white : screen,
+                    0.5)
+                shine(origin.x + 1, origin.y - 3, radius: 9, warm, 0.8)
+            case .meeting:
+                shine(origin.x + 12, origin.y - 4, radius: 14, warm, 0.6)
+            case .sofa:
+                break
+            }
+        }
+        shine(126, Self.loungeY + 8, radius: 22, warm, 0.35)
     }
 
     /// A soft spotlight under the agent the pointer is on.
@@ -393,7 +450,9 @@ struct OfficeScene {
             canvas.fill(characterX + 1, top - left, 1, 1, look.skin)
             canvas.fill(characterX + 7, top - (1 - left), 1, 1, look.skin)
         }
-        if session.appearanceSeed.isMultiple(of: 3) {
+        if darkness > 0 {
+            drawDeskLamp(canvas, x: x - 0.5, top: top)
+        } else if session.appearanceSeed.isMultiple(of: 3) {
             canvas.fill(x + 24, top - 2, 2, 2, Color(hex: 0xF4F1EA))
             canvas.fill(x + 26, top - 1.5, 0.6, 1, Color(hex: 0xF4F1EA))
         }

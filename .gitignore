@@ -9,3 +9,4 @@ Package.resolved.bak
 .idea/
 .vscode/
 /graphify-out
+dist/

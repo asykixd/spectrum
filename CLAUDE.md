@@ -11,18 +11,20 @@ and Lumio-style pixel office showing AI coding agents' live activity. Nothing el
 ## Commands
 - Format: `swift format --in-place --recursive Sources Tests Package.swift`
 - Lint: `swift format lint --strict --recursive Sources Tests Package.swift`
-- Build / run: `swift build`, `swift run Spectrum`
+- Build / run: `swift build`, `.build/debug/Spectrum`
+- UI check without music/agents: `.build/debug/Spectrum preview <dir>` renders every mode to PNG
 - Test: `swift test` (Swift Testing, `@Test` / `#expect`)
   - With Command Line Tools only (no Xcode), the Testing macro plugin isn't found by default:
     `swift test -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`
 
 ## Layout
-- `Sources/SpectrumCore` — UI-free logic (hook event decoding, agent state, now-playing model). All tests target this.
-- `Sources/Spectrum` — AppKit/SwiftUI app: `NotchPanel` (borderless panel over the notch), views.
+- `Sources/SpectrumCore` — UI-free logic: hook events, `SessionStore`, `AgentSocket`, `HookInstaller`, `NowPlaying`, `DoubleTapDetector`, `NotchMode`, `NotchGeometry`. All tests target this.
+- `Sources/Spectrum` — AppKit/SwiftUI app: `main.swift` (CLI subcommands), `AppDelegate` (wiring, hover polling), monitors (`NowPlayingMonitor`, `AgentMonitor`, `ShortcutMonitor`), `NotchModel` + `NotchLayout`, views (`NotchRootView`, `MusicViews`, `AgentsPanelView`, `OfficeView`, `PixelArt`).
 - `Tests/SpectrumCoreTests` — unit tests.
 
 ## Conventions
 - Keep logic in `SpectrumCore` so it's testable without a window server.
-- Agents are tracked via Claude Code hooks (stdin JSON: `session_id`, `hook_event_name`, `tool_name`, ...).
+- Agents are tracked via Claude Code hooks (stdin JSON: `session_id`, `hook_event_name`, `tool_name`, ...). `Spectrum hook` forwards it over `~/Library/Application Support/Spectrum/agent.sock`; it must stay silent on stdout and exit 0.
+- Now playing uses Spotify / Music AppleScript. Don't use MediaRemote or inject code into Apple binaries to bypass its entitlement check.
 - Permissions: users grant whatever is needed (Accessibility, Automation, media/private APIs like MediaRemote). Don't design around missing permissions; just request them.
 - Not sandboxed / not App Store — private frameworks are acceptable.

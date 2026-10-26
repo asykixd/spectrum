@@ -20,22 +20,24 @@ agents: a list of Claude Code sessions showing who is working and who is waiting
 pixel-art office where every session sits at its own desk.
 
 > [!NOTE]
-> Spectrum is in early development. The notch panel and the Claude Code event model work today;
-> everything else below is tracked in [ROADMAP.md](ROADMAP.md).
+> Spectrum is in early development and is not packaged as a signed `.app` yet; it runs from a
+> Swift build. See [ROADMAP.md](ROADMAP.md).
 
 ## Features
 
 | Feature | Status |
 | --- | --- |
-| Borderless panel sized to the hardware notch, content on the left and right "ears" | Done |
-| Invisible when idle, like Dynamic Island | Planned |
-| Claude Code hook event decoding and per-session activity state (thinking, tool use, waiting, finished) | Done |
-| Now playing: artwork, title, artist, play/pause/next for Music, Spotify and browsers | Planned |
-| Compact live activity while music plays: artwork and audio waveform, expands on hover | Planned |
-| Double-tap <kbd>⌘</kbd> to open the agents panel | Planned |
-| Sessions list: who is working on what, who is waiting for input, jump to terminal | Planned |
-| Pixel office: one character per agent session, desk screen shows the current activity | Planned |
-| Codex, Cursor and GitHub Copilot agents | Planned |
+| Invisible when idle, like Dynamic Island: nothing outside the hardware notch | Done |
+| Compact live activity while music plays: artwork and animated waveform tinted by the artwork | Done |
+| Hover to expand: title, artist, progress, previous / play-pause / next, source app icon | Done |
+| Spotify and Apple Music | Done |
+| Double-tap <kbd>⌘</kbd> to open the agents panel; <kbd>Esc</kbd> or a click outside closes it | Done |
+| Sessions tab: every Claude Code session, what it is doing, who is waiting for you | Done |
+| Office tab: pixel-art office, one animated character per session, desk screen shows the activity | Done |
+| One-click Claude Code hook installer that keeps your existing hooks | Done |
+| Signed `.app` bundle | Planned |
+| Jump to an agent's terminal, Codex / Cursor / Copilot agents | Planned |
+| Browsers and other players | Planned |
 
 ## Installation
 
@@ -50,33 +52,65 @@ swift build -c release
 
 ## Usage
 
-```sh
-swift run Spectrum
-```
-
-In the current build a placeholder panel is always shown around the notch so you can see that the
-app runs; it will become invisible when idle. Spectrum runs as an accessory app, so it has no Dock
-icon or menu. To quit:
+Start the app:
 
 ```sh
-pkill -f Spectrum
+.build/release/Spectrum
 ```
+
+Connect Claude Code once (or press **Install Claude Code hooks** in the agents panel):
+
+```sh
+.build/release/Spectrum install-hooks
+```
+
+Then:
+
+- Play something in Spotify or Apple Music: the notch grows a live activity. Hover it for controls.
+- Double-tap <kbd>⌘</kbd> to see your agents. Switch between **Sessions** and **Office**.
+- Nothing playing and the panel closed: Spectrum is invisible.
+
+Spectrum runs as an accessory app with no Dock icon. To quit: `pkill -f Spectrum`.
+
+### Permissions
+
+| Permission | Why |
+| --- | --- |
+| Accessibility | Watching <kbd>⌘</kbd> and <kbd>Esc</kbd> system-wide |
+| Automation → Spotify / Music | Reading the current track and sending play, pause, next, previous |
+
+While Spectrum runs from a terminal, macOS attributes these permissions to the terminal app.
+
+### Commands
+
+| Command | Description |
+| --- | --- |
+| `Spectrum` | Run the app |
+| `Spectrum install-hooks` | Add Spectrum hooks to `~/.claude/settings.json` (a one-time backup is saved next to it) |
+| `Spectrum uninstall-hooks` | Remove only Spectrum's hooks |
+| `Spectrum hook` | Called by Claude Code hooks: forwards the event from stdin to the app; silent, always exits 0 |
+| `Spectrum preview <dir>` | Render every notch state with sample data to PNG files |
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    CC[Claude Code hooks] -- JSON events --> Core[SpectrumCore<br/>AgentEvent / AgentActivity]
-    MR[MediaRemote<br/>now playing] -. planned .-> Core
-    Core --> UI[Notch panel<br/>SwiftUI]
+    CC[Claude Code] -- hook JSON --> Hook[Spectrum hook]
+    Hook -- unix socket --> Agents[AgentMonitor<br/>SessionStore]
+    Players[Spotify / Music] -- AppleScript --> Music[NowPlayingMonitor]
+    Keys[⌘⌘ / Esc] --> Model
+    Agents --> Model[NotchModel<br/>NotchMode]
+    Music --> Model
+    Model --> UI[Notch panel<br/>SwiftUI]
 ```
 
-- `Sources/SpectrumCore`: UI-free logic: hook payload decoding, agent activity state, notch geometry.
-- `Sources/Spectrum`: AppKit/SwiftUI app: a non-activating `NSPanel` above the menu bar.
+- `Sources/SpectrumCore`: UI-free, unit-tested logic: hook events, sessions, socket transport,
+  hook installer, now-playing parsing, double-tap detection, notch modes and geometry.
+- `Sources/Spectrum`: the AppKit/SwiftUI app: a non-activating `NSPanel` above the menu bar.
 
-Spectrum is not sandboxed and not distributed through the App Store. It is designed to use the
-system permissions users grant it (Accessibility, Automation) and private frameworks such as
-MediaRemote.
+MediaRemote, which NotchNook-style apps used to read any player, no longer answers third-party
+apps since macOS 15.4, so Spectrum talks to Spotify and Apple Music through their AppleScript
+dictionaries.
 
 ## Development
 

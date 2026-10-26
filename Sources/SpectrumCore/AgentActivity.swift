@@ -9,16 +9,33 @@ public enum AgentActivity: Equatable, Sendable {
     /// Folds the next hook event into the current activity.
     public func applying(_ event: AgentEvent) -> AgentActivity {
         switch event.kind {
-        case .sessionStart, .postToolUse, .userPromptSubmit, .subagentStop:
+        case .sessionStart, .stop:
+            return .idle
+        case .postToolUse, .userPromptSubmit, .subagentStop:
             return .thinking
         case .preToolUse:
             return .usingTool(event.toolName ?? "tool")
         case .notification:
             return .waitingForUser
-        case .stop:
-            return .idle
         case .sessionEnd:
             return .finished
+        }
+    }
+
+    public var summary: String {
+        switch self {
+        case .idle: "Idle"
+        case .thinking: "Thinking…"
+        case .usingTool(let tool): "Running \(tool)"
+        case .waitingForUser: "Waiting for you"
+        case .finished: "Done"
+        }
+    }
+
+    public var isWorking: Bool {
+        switch self {
+        case .thinking, .usingTool: true
+        case .idle, .waitingForUser, .finished: false
         }
     }
 }

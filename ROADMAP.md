@@ -5,7 +5,6 @@
 - [ ] Developer ID signing and notarization, so the app opens without the quarantine workaround
 - [ ] Jump to the agent's terminal window from the sessions list
 - [ ] Launch at login
-
 - [x] Allow or deny permission requests from the island (`PermissionRequest` hook)
 - [x] Task progress from `TodoWrite` and the Task tools around the avatar in the sessions list
 - [x] Office tool animations: a page for reading, code for edits, a terminal, a browser for the web

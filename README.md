@@ -49,12 +49,18 @@ desks, talk in the meeting room and doze on the sofa.
   a terminal, a browser, code) and subagents as small interns on the desk, a meeting room where
   you and Claude talk through a chat, a lounge for idle agents. Hover to highlight, click to open.
   The room follows your Mac's clock, from a blue sky to a lamp-lit night.
+- **Boss**: today's agent work at a glance: what it would cost at API prices, tokens, how long
+  agents worked, the current five-hour usage window, and per project the time, cost and the last
+  thing you asked for. Read from Claude Code's transcripts, subagents included, only while the tab
+  is open.
 
 | Sessions | Conversation |
 | --- | --- |
 | <img src="docs/screenshots/agents-sessions.png" alt="Sessions list"> | <img src="docs/screenshots/agents-conversation.png" alt="Conversation view"> |
 
 <img src="docs/screenshots/agents-office-night.png" width="720" alt="The office at night">
+
+<img src="docs/screenshots/agents-boss.png" width="720" alt="The boss tab">
 
 ### Signals
 

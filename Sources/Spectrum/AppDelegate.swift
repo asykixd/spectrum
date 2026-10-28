@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var agents: AgentMonitor?
     private var chats: ClaudeChatMonitor?
     private var transcripts: TranscriptMonitor?
+    private var boss: BossMonitor?
     private var replies: ReplySender?
     private var settingsWindow: NSWindow?
     private var dismissal = HoverDismissal()
@@ -101,6 +102,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         chats.start()
         let transcripts = TranscriptMonitor(model: model)
         transcripts.start()
+        let boss = BossMonitor(model: model)
+        boss.start()
         let replies = ReplySender(model: model)
         model.onReply = { [weak replies] prompt, session in replies?.send(prompt, to: session) }
 
@@ -130,6 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.agents = agents
         self.chats = chats
         self.transcripts = transcripts
+        self.boss = boss
         self.replies = replies
         self.shortcuts = shortcuts
     }

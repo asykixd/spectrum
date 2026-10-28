@@ -35,6 +35,8 @@ struct AgentsPanelView: View {
                 case .office:
                     OfficeView(model: model)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                case .boss:
+                    BossView(report: model.bossReport)
                 }
             }
             .padding(.horizontal, 16)
@@ -55,24 +57,37 @@ private struct TabSwitcher: View {
                 .sessions, title: count > 0 ? "Sessions \(count)" : "Sessions",
                 symbol: "list.bullet")
             item(.office, title: "Office", symbol: "building.2")
+            item(.boss, title: "Boss", symbol: "briefcase")
         }
         .padding(3)
         .background(Capsule().fill(.white.opacity(0.08)))
     }
 
+    /// Three tabs don't fit the ear beside the notch with titles, so only the open one has a
+    /// title; the others show their icon (and the session count).
     private func item(_ value: AgentsTab, title: String, symbol: String) -> some View {
-        Button {
+        let selected = tab == value
+        return Button {
             withAnimation(.snappy(duration: 0.2)) { select(value) }
         } label: {
-            Label(title, systemImage: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(tab == value ? .black : .white.opacity(0.7))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(tab == value ? .white : .clear))
-                .contentShape(Capsule())
+            Group {
+                if selected {
+                    Label(title, systemImage: symbol)
+                } else if value == .sessions, count > 0 {
+                    Label("\(count)", systemImage: symbol)
+                } else {
+                    Image(systemName: symbol)
+                }
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(selected ? .black : .white.opacity(0.7))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(selected ? .white : .clear))
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .help(title)
     }
 }
 

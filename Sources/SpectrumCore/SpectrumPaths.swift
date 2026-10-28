@@ -11,6 +11,12 @@ public enum SpectrumPaths {
         supportDirectory.appending(path: "agent.sock")
     }
 
+    /// Claude Code's transcripts, one folder per project.
+    public static var claudeProjects: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appending(
+            path: ".claude/projects", directoryHint: .isDirectory)
+    }
+
     public static var claudeSettings: URL {
         FileManager.default.homeDirectoryForCurrentUser.appending(path: ".claude/settings.json")
     }

@@ -6,6 +6,7 @@ import SwiftUI
 enum AgentsTab: Hashable {
     case sessions
     case office
+    case boss
 }
 
 /// Single source of truth for everything the notch shows.
@@ -66,6 +67,8 @@ final class NotchModel {
     private(set) var signal: AttentionTracker.Signal?
     var isHovering = false { didSet { updateMode() } }
     var tab: AgentsTab = .sessions
+    /// Today's work and spend, filled in while the boss tab is open.
+    var bossReport: BossReport?
     var hooksInstalled = false
 
     private(set) var mode: NotchMode = .hidden

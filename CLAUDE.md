@@ -20,8 +20,8 @@ and Lumio-style pixel office showing AI coding agents' live activity. Nothing el
     `swift test -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`
 
 ## Layout
-- `Sources/SpectrumCore` — UI-free logic: hook events, `SessionStore`, `AgentSocket`, `HookInstaller`, `NowPlaying`, `DoubleTapDetector`, `NotchMode`, `NotchGeometry`. All tests target this.
-- `Sources/Spectrum` — AppKit/SwiftUI app: `main.swift` (CLI subcommands), `AppDelegate` (wiring, hover polling), monitors (`NowPlayingMonitor`, `AgentMonitor`, `ShortcutMonitor`), `NotchModel` + `NotchLayout`, views (`NotchRootView`, `MusicViews`, `AgentsPanelView`, `OfficeView`, `PixelArt`).
+- `Sources/SpectrumCore` — UI-free logic: hook events, `SessionStore`, `AgentSocket`, `HookInstaller`, `NowPlaying`, `DoubleTapDetector`, `NotchMode`, `NotchGeometry`, `Permission`, `TaskProgress`, `BossReport` + `UsageScanner` + `ModelPrice` (spend from transcripts). All tests target this.
+- `Sources/Spectrum` — AppKit/SwiftUI app: `main.swift` (CLI subcommands), `AppDelegate` (wiring, hover polling), monitors (`NowPlayingMonitor`, `AgentMonitor`, `ShortcutMonitor`, `BossMonitor`), `NotchModel` + `NotchLayout`, views (`NotchRootView`, `MusicViews`, `SignalView`, `PermissionView`, `AgentsPanelView`, `OfficeView`, `BossView`, `PixelArt`).
 - `Tests/SpectrumCoreTests` — unit tests.
 
 ## Conventions
@@ -32,6 +32,7 @@ and Lumio-style pixel office showing AI coding agents' live activity. Nothing el
 - `@State` and other SwiftUI macros fail to build with Command Line Tools only; keep view state in `NotchModel`.
 - `ImageRenderer` (preview command) can't draw `ScrollView`, `Form` or `Menu`; those show blank or 🚫 in previews.
 - Energy matters: no polling while the island is hidden, timers get `tolerance`, the Claude AX walk uses `AXUIElementCopyMultipleAttributeValues` and `ChatPollPolicy`. Measure with `top -pid` before/after perf changes.
+- `ModelPrice` holds API list prices; update it when Anthropic's pricing changes.
 - Haptics only on island open/close. The user explicitly does not want them on player controls or tab switches.
 - Now playing uses Spotify / Music AppleScript. Don't use MediaRemote or inject code into Apple binaries to bypass its entitlement check.
 - Permissions: users grant whatever is needed (Accessibility, Automation, media/private APIs like MediaRemote). Don't design around missing permissions; just request them.

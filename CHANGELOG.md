@@ -16,9 +16,12 @@ All notable changes to this project are documented here. The format follows
 - Office monitors show what the tool does: a page of text while reading, a terminal for
   commands, a browser for web search, code for edits.
 - Subagents appear as small interns on their agent's desk.
+- Boss tab: today's cost at API prices, tokens, time agents worked and the current five-hour
+  window, with a row per project showing its time, cost and last prompt.
 
 ### Changed
 
+- Only the open tab in the agents panel shows its title; the others show an icon.
 - Quieter island signals: a small warning icon with a thin blinking outline when an agent needs
   you, and a small checkmark that stays for three seconds instead of 1.6.
 - Agent signals no longer hide the playing music: the icon rides on the artwork as a badge and

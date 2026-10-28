@@ -15,6 +15,7 @@ enum PreviewRenderer {
         var agentsOpen = false
         var conversation = false
         var hour = 14
+        var boss = false
         /// Activities the sessions had a moment ago, to trigger the done checkmark.
         var before: [AgentSession]?
     }
@@ -44,6 +45,9 @@ enum PreviewRenderer {
                 conversation: true),
             Scene(name: "agents-office", tab: .office, sessions: officeSessions, agentsOpen: true),
             Scene(
+                name: "agents-boss", tab: .boss, sessions: listSessions, agentsOpen: true,
+                boss: true),
+            Scene(
                 name: "agents-office-night", tab: .office, sessions: officeSessions,
                 agentsOpen: true, hour: 23),
         ]
@@ -71,6 +75,7 @@ enum PreviewRenderer {
                 model.selectedSessionID = "a"
                 model.transcript = sampleTranscript
             }
+            if scene.boss { model.bossReport = sampleReport }
             if scene.hovering { model.isHovering = true }
             if scene.agentsOpen { model.agentsOpen = true }
 
@@ -180,6 +185,32 @@ enum PreviewRenderer {
         agent("d", "dotfiles", .idle),
         agent("g", "Recipes", .idle, kind: .chat),
     ]
+
+    private static var sampleReport: BossReport {
+        let now = Date()
+        let hour = Calendar.current.dateInterval(of: .hour, for: now)?.start ?? now
+        return BossReport(
+            todayCost: 18.42, todayTokens: 21_400_000, activeTime: 5 * 3600 + 38 * 60,
+            projects: [
+                .init(
+                    name: "weather-app", cost: 9.85, tokens: 11_200_000,
+                    activeTime: 2 * 3600 + 50 * 60,
+                    sessions: 2, lastPrompt: "Add a 7-day forecast screen"),
+                .init(
+                    name: "billing-api", cost: 5.10, tokens: 6_300_000,
+                    activeTime: 1 * 3600 + 42 * 60,
+                    sessions: 1, lastPrompt: "Retry failed webhooks with backoff"),
+                .init(
+                    name: "landing-page", cost: 2.31, tokens: 2_900_000, activeTime: 48 * 60,
+                    sessions: 1, lastPrompt: "Make the hero section responsive"),
+                .init(
+                    name: "dotfiles", cost: 1.16, tokens: 1_000_000, activeTime: 18 * 60,
+                    sessions: 1, lastPrompt: "Clean up zsh aliases"),
+            ],
+            window: .init(
+                start: hour.addingTimeInterval(-3600), end: hour.addingTimeInterval(4 * 3600),
+                cost: 6.70, tokens: 7_800_000))
+    }
 
     private static let sampleTranscript: [TranscriptMessage] = [
         .init(id: "1", role: .user, text: "Add a 7-day forecast screen"),

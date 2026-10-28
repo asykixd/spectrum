@@ -6,10 +6,19 @@
 - [ ] Jump to the agent's terminal window from the sessions list
 - [ ] Launch at login
 
+- [ ] Allow or deny permission requests from the island (`PermissionRequest` hook)
+- [ ] Task progress from `TodoWrite` on the avatar and under the island
+- [ ] Office tool animations: reading, typing, terminal, globe for web search
+- [ ] Subagents as interns next to their agent in the office
+- [ ] Boss's office: hours worked per agent, what each did, tokens and money spent, 5-hour limit
+- [ ] Start a new Claude Code session in a project from the panel
+- [ ] Session summary when a task finishes: files changed, lines added and removed
+
 ## Next
 - [ ] Codex support
 - [ ] Browsers and other players in now playing (MediaRemote ignores third-party apps since macOS 15.4)
 - [ ] Waveform driven by real audio levels instead of an animation
+- [ ] Synced lyrics in the expanded player (LRCLIB)
 
 ## Later
 - [ ] Cursor and GitHub Copilot agents

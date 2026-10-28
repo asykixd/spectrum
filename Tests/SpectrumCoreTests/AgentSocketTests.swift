@@ -20,7 +20,10 @@ private final class Inbox: @unchecked Sendable {
     let path = "/tmp/spectrum-test-\(UUID().uuidString.prefix(8)).sock"
     let server = AgentSocketServer(path: path)
     let inbox = Inbox()
-    try server.start { inbox.add($0) }
+    try server.start { payload, reply in
+        inbox.add(payload)
+        reply.send(nil)
+    }
     defer { server.stop() }
 
     try AgentSocket.send(Data("one".utf8), to: path)
@@ -41,4 +44,31 @@ private final class Inbox: @unchecked Sendable {
     #expect(throws: AgentSocketError.pathTooLong) {
         try AgentSocket.send(Data(), to: "/" + String(repeating: "a", count: 200))
     }
+}
+
+@Test func requestWaitsForTheAppsAnswer() throws {
+    let path = "/tmp/spectrum-test-\(UUID().uuidString.prefix(8)).sock"
+    let server = AgentSocketServer(path: path)
+    let inbox = Inbox()
+    try server.start { payload, reply in
+        inbox.add(payload)
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) {
+            reply.send(Data("answer".utf8))
+        }
+    }
+    defer { server.stop() }
+
+    let answer = try AgentSocket.request(Data("question".utf8), to: path, timeout: 2)
+
+    #expect(answer == Data("answer".utf8))
+    #expect(inbox.received == [Data("question".utf8)])
+}
+
+@Test func requestGetsNothingWhenTheAppDeclines() throws {
+    let path = "/tmp/spectrum-test-\(UUID().uuidString.prefix(8)).sock"
+    let server = AgentSocketServer(path: path)
+    try server.start { _, reply in reply.send(nil) }
+    defer { server.stop() }
+
+    #expect(try AgentSocket.request(Data("q".utf8), to: path, timeout: 2).isEmpty)
 }

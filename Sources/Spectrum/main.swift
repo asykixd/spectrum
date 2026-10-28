@@ -17,8 +17,20 @@ switch arguments.first {
 case "hook":
     // Runs inside every Claude Code hook: must stay silent on stdout (UserPromptSubmit output
     // is fed to the model) and must never fail the agent, even when the app isn't running.
+    // The one exception is a permission request the user answered on the island: its decision
+    // goes to stdout, and with no answer Claude Code shows its own dialog as usual.
     let payload = FileHandle.standardInput.readDataToEndOfFile()
-    try? AgentSocket.send(payload, to: SpectrumPaths.agentSocket.path)
+    let path = SpectrumPaths.agentSocket.path
+    if (try? AgentEvent.decode(payload))?.kind == .permissionRequest {
+        let wait = TimeInterval(HookInstaller.permissionWait)
+        if let answer = try? AgentSocket.request(payload, to: path, timeout: wait),
+            !answer.isEmpty
+        {
+            FileHandle.standardOutput.write(answer)
+        }
+    } else {
+        try? AgentSocket.send(payload, to: path)
+    }
     exit(0)
 
 case "install-hooks":

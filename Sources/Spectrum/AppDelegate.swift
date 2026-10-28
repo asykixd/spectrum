@@ -36,10 +36,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = NotchModel(geometry: geometry, settings: .load(from: .standard))
         model.hooksInstalled = HookInstaller.isInstalled(settingsURL: SpectrumPaths.claudeSettings)
         if let path = Bundle.main.executableURL?.resolvingSymlinksInPath().path,
-            HookInstaller.pointsElsewhere(
+            HookInstaller.needsUpdate(
                 settingsURL: SpectrumPaths.claudeSettings, executablePath: path)
         {
-            // The user installed hooks from another copy of Spectrum; follow this one.
+            // Hooks from another copy of Spectrum or an older version; bring them up to date.
             do {
                 try HookInstaller.install(
                     executablePath: path, settingsURL: SpectrumPaths.claudeSettings)
@@ -93,6 +93,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nowPlaying.start()
 
         let agents = AgentMonitor(model: model)
+        model.onPermission = { [weak agents] session, decision in
+            agents?.answer(session, with: decision)
+        }
         agents.start()
         let chats = ClaudeChatMonitor(model: model)
         chats.start()
@@ -165,7 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if dismissal.update(isOpen: open, isInside: hovering) {
             model.agentsOpen = false
         }
-        let interactive = [.expanded, .agents, .attention].contains(model.mode)
+        let interactive = [.expanded, .agents, .attention, .permission].contains(model.mode)
         if panel.ignoresMouseEvents == interactive { panel.ignoresMouseEvents = !interactive }
     }
 

@@ -6,7 +6,7 @@
 - [ ] Jump to the agent's terminal window from the sessions list
 - [ ] Launch at login
 
-- [ ] Allow or deny permission requests from the island (`PermissionRequest` hook)
+- [x] Allow or deny permission requests from the island (`PermissionRequest` hook)
 - [ ] Task progress from `TodoWrite` on the avatar and under the island
 - [ ] Office tool animations: reading, typing, terminal, globe for web search
 - [ ] Subagents as interns next to their agent in the office

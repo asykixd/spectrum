@@ -26,7 +26,7 @@ and Lumio-style pixel office showing AI coding agents' live activity. Nothing el
 
 ## Conventions
 - Keep logic in `SpectrumCore` so it's testable without a window server.
-- Agents are tracked via Claude Code hooks (stdin JSON: `session_id`, `hook_event_name`, `tool_name`, ...). `Spectrum hook` forwards it over `~/Library/Application Support/Spectrum/agent.sock`; it must stay silent on stdout and exit 0.
+- Agents are tracked via Claude Code hooks (stdin JSON: `session_id`, `hook_event_name`, `tool_name`, ...). `Spectrum hook` forwards it over `~/Library/Application Support/Spectrum/agent.sock`; it must stay silent on stdout and exit 0. The one exception: `PermissionRequest` waits up to `HookInstaller.permissionWait` for the island's answer and prints the decision JSON.
 - Claude app chats come from its accessibility tree (`ClaudeChatMonitor`, `ClaudeChatSnapshot`); keep chats for 15 minutes after last seen.
 - Sessions are grouped by `SessionGroups` (code / chats / AFK); the office has matching zones.
 - `@State` and other SwiftUI macros fail to build with Command Line Tools only; keep view state in `NotchModel`.

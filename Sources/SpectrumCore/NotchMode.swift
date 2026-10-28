@@ -12,12 +12,19 @@ public enum NotchMode: Hashable, Sendable {
     case attention
     /// A task just finished: a checkmark for a moment.
     case done
+    /// Pointer over a permission request: what the agent asks for, with allow and deny.
+    case permission
 
     public static func resolve(
         current: NotchMode, isPlaying: Bool, hasTrack: Bool, isHovering: Bool,
         agentsOpen: Bool, signal: AttentionTracker.Signal? = nil
     ) -> NotchMode {
         if agentsOpen { return .agents }
+        if isHovering, case .needsYou(let session) = signal, session.permission != nil,
+            [.attention, .compact, .expanded, .permission].contains(current)
+        {
+            return .permission
+        }
         // Hover only grows an activity that is already visible, and keeps it open after a pause
         // so the user can press play again.
         if isHovering, hasTrack, current == .compact || current == .expanded {

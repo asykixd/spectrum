@@ -11,9 +11,12 @@ public enum HookInstaller {
     static let marker = "# spectrum"
 
     static let events: [AgentEvent.Kind] = [
-        .sessionStart, .userPromptSubmit, .preToolUse, .postToolUse, .notification, .stop,
-        .subagentStop, .sessionEnd,
+        .sessionStart, .userPromptSubmit, .preToolUse, .postToolUse, .notification,
+        .permissionRequest, .stop, .subagentStop, .sessionEnd,
     ]
+
+    /// How long a permission hook waits for the island before Claude Code shows its own dialog.
+    public static let permissionWait = 60
 
     public static func command(executablePath: String) -> String {
         let quoted = "'" + executablePath.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
@@ -24,10 +27,11 @@ public enum HookInstaller {
         var result = removing(from: settings)
         var hooks = result["hooks"] as? [String: Any] ?? [:]
         for event in events {
+            let timeout = event == .permissionRequest ? permissionWait + 15 : 5
             var group: [String: Any] = [
-                "hooks": [["type": "command", "command": command, "timeout": 5]]
+                "hooks": [["type": "command", "command": command, "timeout": timeout]]
             ]
-            if event == .preToolUse || event == .postToolUse {
+            if [.preToolUse, .postToolUse, .permissionRequest].contains(event) {
                 group["matcher"] = "*"
             }
             var groups = hooks[event.rawValue] as? [Any] ?? []
@@ -76,22 +80,25 @@ public enum HookInstaller {
         try writeSettings(removing(from: settings), to: settingsURL)
     }
 
-    /// True when Spectrum's hooks exist but call a different executable, e.g. after moving from
-    /// a development build to the installed app.
-    public static func pointsElsewhere(settingsURL: URL, executablePath: String) -> Bool {
+    /// True when Spectrum's hooks exist but don't match what this copy would install: they call
+    /// a different executable (a development build vs. the installed app) or miss an event a
+    /// newer version listens to.
+    public static func needsUpdate(settingsURL: URL, executablePath: String) -> Bool {
         guard let data = try? Data(contentsOf: settingsURL) else { return false }
-        let text = String(decoding: data, as: UTF8.self)
-        guard text.contains(marker) else { return false }
+        guard String(decoding: data, as: UTF8.self).contains(marker) else { return false }
         // JSON escapes the quotes and slashes differently, so compare through a decode.
         guard let settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let hooks = settings["hooks"] as? [String: Any]
         else { return false }
         let expected = command(executablePath: executablePath)
-        let commands = hooks.values.compactMap { $0 as? [[String: Any]] }.joined()
-            .compactMap { $0["hooks"] as? [[String: Any]] }.joined()
-            .compactMap { $0["command"] as? String }
-            .filter { $0.hasSuffix(marker) }
-        return commands.contains { $0 != expected }
+        func commands(_ value: Any?) -> [String] {
+            ((value as? [[String: Any]]) ?? [])
+                .compactMap { $0["hooks"] as? [[String: Any]] }.joined()
+                .compactMap { $0["command"] as? String }
+                .filter { $0.hasSuffix(marker) }
+        }
+        if hooks.values.flatMap(commands).contains(where: { $0 != expected }) { return true }
+        return events.contains { commands(hooks[$0.rawValue]).isEmpty }
     }
 
     public static func isInstalled(settingsURL: URL) -> Bool {

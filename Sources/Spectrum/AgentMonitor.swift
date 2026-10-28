@@ -8,6 +8,8 @@ final class AgentMonitor {
     private let server = AgentSocketServer(path: SpectrumPaths.agentSocket.path)
     private var store = SessionStore()
     private var pruneTimer: Timer?
+    /// Permission hooks still waiting for an answer from the island, by session.
+    private var pendingPermissions: [String: AgentSocketReply] = [:]
 
     init(model: NotchModel) {
         self.model = model
@@ -15,8 +17,11 @@ final class AgentMonitor {
 
     func start() {
         do {
-            try server.start { [weak self] payload in
-                Task { @MainActor in self?.receive(payload) }
+            try server.start { [weak self] payload, reply in
+                Task { @MainActor in
+                    guard let self else { return reply.send(nil) }
+                    self.receive(payload, reply: reply)
+                }
             }
         } catch {
             log.error("agent socket failed to start: \(error)")
@@ -34,15 +39,53 @@ final class AgentMonitor {
     }
 
     func stop() {
+        for reply in pendingPermissions.values { reply.send(nil) }
+        pendingPermissions = [:]
         server.stop()
     }
 
-    private func receive(_ payload: Data) {
+    /// Sends the island's answer to the waiting hook.
+    func answer(_ session: AgentSession, with decision: PermissionDecision) {
+        guard let reply = pendingPermissions.removeValue(forKey: session.id) else { return }
+        reply.send(decision.hookOutput)
+        store.answeredPermission(sessionID: session.id)
+        publish()
+    }
+
+    private func receive(_ payload: Data, reply: AgentSocketReply) {
+        let event: AgentEvent
         do {
-            store.apply(try AgentEvent.decode(payload), at: Date())
-            publish()
+            event = try AgentEvent.decode(payload)
         } catch {
             log.error("bad hook payload: \(error)")
+            return reply.send(nil)
+        }
+        // Whatever the session does next, an older request of it can no longer be answered.
+        pendingPermissions.removeValue(forKey: event.sessionID)?.send(nil)
+        store.apply(event, at: Date())
+        if event.kind == .permissionRequest && model.settings.answerPermissions {
+            wait(for: event.sessionID, reply: reply)
+        } else {
+            reply.send(nil)
+            store.expirePermission(sessionID: event.sessionID)
+        }
+        publish()
+    }
+
+    private func wait(for sessionID: String, reply: AgentSocketReply) {
+        pendingPermissions[sessionID] = reply
+        // Give up a little before the hook does, so the island stops offering a dead answer.
+        let deadline = TimeInterval(HookInstaller.permissionWait) - 2
+        DispatchQueue.main.asyncAfter(deadline: .now() + deadline) { [weak self, weak reply] in
+            MainActor.assumeIsolated {
+                guard let self, let reply, self.pendingPermissions[sessionID] === reply else {
+                    return
+                }
+                self.pendingPermissions[sessionID] = nil
+                reply.send(nil)
+                self.store.expirePermission(sessionID: sessionID)
+                self.publish()
+            }
         }
     }
 

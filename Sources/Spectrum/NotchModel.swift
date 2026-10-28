@@ -76,6 +76,7 @@ final class NotchModel {
     @ObservationIgnored var onOpenSettings: () -> Void = {}
     @ObservationIgnored var onOpenChat: (AgentSession) -> Void = { _ in }
     @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }
+    @ObservationIgnored var onPermission: (AgentSession, PermissionDecision) -> Void = { _, _ in }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
     @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
     /// Fixed time for the office's day/night cycle; only the preview command sets it.
@@ -144,6 +145,19 @@ final class NotchModel {
         agentsOpen = true
     }
 
+    /// The permission request the island can answer right now.
+    var permissionRequest: (session: AgentSession, prompt: PermissionPrompt)? {
+        guard case .needsYou(let session) = signal, let prompt = session.permission else {
+            return nil
+        }
+        return (session, prompt)
+    }
+
+    func answerPermission(_ decision: PermissionDecision) {
+        guard let request = permissionRequest else { return }
+        onPermission(request.session, decision)
+    }
+
     private func updateMode() {
         let track = settings.showMusic ? nowPlaying : nil
         var current = attention.signal(at: Date())
@@ -175,6 +189,7 @@ final class NotchModel {
 enum NotchLayout {
     static let expandedSize = CGSize(width: 440, height: 128)
     static let agentsSize = CGSize(width: 680, height: 340)
+    static let permissionSize = CGSize(width: 440, height: 96)
     /// Signals stay quiet: each ear only fits a small status icon next to the hardware notch.
     static let signalEarWidth: CGFloat = 30
 
@@ -190,13 +205,16 @@ enum NotchLayout {
             return CGSize(width: agentsSize.width, height: notch.height + agentsSize.height)
         case .attention, .done:
             return CGSize(width: notch.width + signalEarWidth * 2, height: notch.height)
+        case .permission:
+            return CGSize(
+                width: permissionSize.width, height: notch.height + permissionSize.height)
         }
     }
 
     static func bottomRadius(for mode: NotchMode) -> CGFloat {
         switch mode {
         case .hidden, .compact, .attention, .done: 10
-        case .expanded: 28
+        case .expanded, .permission: 28
         case .agents: 32
         }
     }

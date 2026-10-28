@@ -31,6 +31,8 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     public var alertWhenNeeded = true
     /// Flash a checkmark when a task finishes.
     public var flashWhenDone = true
+    /// Let Claude Code permission requests be allowed or denied from the island.
+    public var answerPermissions = true
 
     public init() {}
 
@@ -67,6 +69,9 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         flashWhenDone =
             try container.decodeIfPresent(Bool.self, forKey: .flashWhenDone)
             ?? defaults.flashWhenDone
+        answerPermissions =
+            try container.decodeIfPresent(Bool.self, forKey: .answerPermissions)
+            ?? defaults.answerPermissions
     }
 
     public static func load(from defaults: UserDefaults, key: String = "settings")

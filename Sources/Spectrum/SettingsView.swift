@@ -30,6 +30,12 @@ struct SettingsView: View {
                 Toggle(
                     "Reply to idle Claude Code sessions from the panel",
                     isOn: $model.settings.replyFromPanel)
+                Toggle(isOn: $model.settings.answerPermissions) {
+                    Text("Allow or deny permission requests from the island")
+                    Text(
+                        "Hover the warning to answer. Without an answer the terminal asks after a minute."
+                    )
+                }
                 Toggle(isOn: $model.settings.showClaudeChats) {
                     Text("Show chats from the Claude app")
                     Text(

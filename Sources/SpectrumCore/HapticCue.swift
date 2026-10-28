@@ -8,7 +8,7 @@ public enum HapticCue: Equatable, Sendable {
     /// Feedback for a mode change, or nil when the user likely isn't touching the trackpad
     /// (music starting or stopping on its own).
     public static func forTransition(from old: NotchMode, to new: NotchMode) -> HapticCue? {
-        let interactive: Set<NotchMode> = [.expanded, .agents]
+        let interactive: Set<NotchMode> = [.expanded, .agents, .permission]
         switch (interactive.contains(old), interactive.contains(new)) {
         case (false, true): return .expand
         case (true, false): return .collapse

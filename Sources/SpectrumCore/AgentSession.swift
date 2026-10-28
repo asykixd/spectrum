@@ -16,6 +16,8 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     /// Claude Code's JSONL transcript, for showing the conversation.
     public var transcriptPath: String?
     public var activity: AgentActivity
+    /// A permission request the island can answer, while the hook still waits for it.
+    public var permission: PermissionPrompt?
     public let startedAt: Date
     public var updatedAt: Date
 
@@ -68,10 +70,26 @@ public struct SessionStore: Equatable, Sendable {
                 id: event.sessionID, cwd: event.cwd, activity: .idle,
                 startedAt: date, updatedAt: date)
         session.activity = session.activity.applying(event)
+        // Any later event means the request was settled, by the island or in the terminal.
+        session.permission = event.permissionPrompt
         session.cwd = event.cwd ?? session.cwd
         session.transcriptPath = event.transcriptPath ?? session.transcriptPath
         session.updatedAt = date
         sessions[event.sessionID] = session
+    }
+
+    /// The island answered the request; the agent carries on without waiting for its next event.
+    public mutating func answeredPermission(sessionID: String) {
+        guard var session = sessions[sessionID], session.permission != nil else { return }
+        session.permission = nil
+        session.activity = .thinking
+        sessions[sessionID] = session
+    }
+
+    /// The island can't answer this request (disabled or timed out): Claude Code asks in the
+    /// terminal instead, and the agent keeps waiting there.
+    public mutating func expirePermission(sessionID: String) {
+        sessions[sessionID]?.permission = nil
     }
 
     /// Drops sessions that went quiet without a `SessionEnd`, e.g. a closed terminal.

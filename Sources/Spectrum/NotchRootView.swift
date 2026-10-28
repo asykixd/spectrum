@@ -47,6 +47,8 @@ struct NotchRootView: View {
             AgentsPanelView(model: model)
         case .attention, .done:
             SignalView(model: model)
+        case .permission:
+            PermissionView(model: model)
         }
     }
 }

@@ -34,6 +34,7 @@ enum PreviewRenderer {
             Scene(
                 name: "compact-attention", sessions: [agent("b", "billing-api", .waitingForUser)],
                 music: true),
+            Scene(name: "permission", sessions: [askingAgent], hovering: true),
             Scene(
                 name: "done", sessions: [agent("w", "weather-app", .idle)],
                 before: [agent("w", "weather-app", .thinking)]),
@@ -132,6 +133,12 @@ enum PreviewRenderer {
             cwd: kind == .code ? "~/code/\(project)" : nil, transcriptPath: "/dev/null",
             activity: activity, startedAt: now.addingTimeInterval(-minutesAgo * 60),
             updatedAt: now.addingTimeInterval(-minutesAgo * 20))
+    }
+
+    private static var askingAgent: AgentSession {
+        var session = agent("b", "billing-api", .waitingForUser)
+        session.permission = PermissionPrompt(tool: "Bash", detail: "rm -rf .build && swift test")
+        return session
     }
 
     /// Small enough to fit the list without scrolling.

@@ -24,6 +24,26 @@ private let command = HookInstaller.command(executablePath: "/Apps/Spectrum")
     #expect(stop.count == 2)
     let pre = try #require(hooks["PreToolUse"] as? [[String: Any]])
     #expect(pre.first?["matcher"] as? String == "*")
+    // The hook waits for an answer from the island, so it needs more than the usual 5 s.
+    let permission = try #require(hooks["PermissionRequest"] as? [[String: Any]])
+    let entry = try #require((permission.first?["hooks"] as? [[String: Any]])?.first)
+    #expect((entry["timeout"] as? Int ?? 0) > HookInstaller.permissionWait)
+}
+
+@Test func hooksMissingAnEventNeedAnUpdate() throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let url = directory.appending(path: "settings.json")
+    var settings = HookInstaller.installing(into: [:], command: command)
+    var hooks = try #require(settings["hooks"] as? [String: Any])
+    hooks["PermissionRequest"] = nil
+    settings["hooks"] = hooks
+    try JSONSerialization.data(withJSONObject: settings).write(to: url)
+
+    #expect(HookInstaller.needsUpdate(settingsURL: url, executablePath: "/Apps/Spectrum"))
+    try HookInstaller.install(executablePath: "/Apps/Spectrum", settingsURL: url)
+    #expect(!HookInstaller.needsUpdate(settingsURL: url, executablePath: "/Apps/Spectrum"))
 }
 
 @Test func installIsIdempotent() throws {
@@ -82,7 +102,7 @@ private let command = HookInstaller.command(executablePath: "/Apps/Spectrum")
     try HookInstaller.install(executablePath: "/dev/build/Spectrum", settingsURL: url)
 
     #expect(
-        HookInstaller.pointsElsewhere(
+        HookInstaller.needsUpdate(
             settingsURL: url, executablePath: "/Applications/Spectrum.app/Contents/MacOS/Spectrum"))
-    #expect(!HookInstaller.pointsElsewhere(settingsURL: url, executablePath: "/dev/build/Spectrum"))
+    #expect(!HookInstaller.needsUpdate(settingsURL: url, executablePath: "/dev/build/Spectrum"))
 }

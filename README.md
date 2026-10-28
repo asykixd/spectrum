@@ -64,6 +64,11 @@ instead of replacing it.
 <img src="docs/screenshots/attention.png" width="470" alt="An agent needs you">
 <img src="docs/screenshots/done.png" width="470" alt="A task finished">
 
+Hover the warning to see what the agent asks for and allow or deny it right there. If you don't
+answer within a minute, Claude Code shows its usual dialog in the terminal.
+
+<img src="docs/screenshots/permission.png" width="470" alt="Allow or deny from the island">
+
 ## Installation
 
 1. Download `Spectrum-<version>.dmg` from the
@@ -114,6 +119,7 @@ The gear in the agents panel opens Settings, installs or removes the hooks and q
 | Show music while it plays | On |
 | Blink when an agent needs permission or an answer | On |
 | Flash a checkmark when a task finishes | On |
+| Allow or deny permission requests from the island | On |
 | Trackpad haptics when the island opens and closes | On |
 | Agents panel shortcut | Double-tap ⌘ |
 | Office characters | Clawd |
@@ -140,7 +146,8 @@ flowchart LR
 
 - **Claude Code** reports to Spectrum through hooks in `~/.claude/settings.json`. Each hook runs
   `Spectrum hook`, which forwards the event over a local socket, stays silent and always exits 0,
-  so it never slows an agent down. Your own hooks are kept, and a backup of the file is saved the
+  so it never slows an agent down. Only a permission request waits, up to a minute, for an
+  answer from the island, and prints the decision for Claude Code. Your own hooks are kept, and a backup of the file is saved the
   first time.
 - **Replies** run `claude -p --resume <session>` in the background: the answer appears in
   Spectrum, not in the session's open terminal.

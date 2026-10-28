@@ -13,6 +13,9 @@ All notable changes to this project are documented here. The format follows
   version are updated on launch.
 - Task progress in the sessions list: a ring around the avatar and "2/4 Writing the view", from
   the agent's `TodoWrite` list or the newer `TaskCreate` / `TaskUpdate` tools.
+- Office monitors show what the tool does: a page of text while reading, a terminal for
+  commands, a browser for web search, code for edits.
+- Subagents appear as small interns on their agent's desk.
 
 ### Changed
 

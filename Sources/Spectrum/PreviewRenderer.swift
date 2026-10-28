@@ -164,11 +164,18 @@ enum PreviewRenderer {
         agent("d", "dotfiles", .idle, minutesAgo: 12),
     ]
 
+    private static var delegatingAgent: AgentSession {
+        var session = agent("f", "ml-pipeline", .usingTool("Agent"))
+        session.subagents = 2
+        return session
+    }
+
     private static let officeSessions = [
         agent("a", "weather-app", .usingTool("Bash")),
         agent("b", "billing-api", .waitingForUser),
-        agent("e", "landing-page", .thinking),
-        agent("f", "ml-pipeline", .usingTool("Edit")),
+        agent("e", "landing-page", .usingTool("Read")),
+        delegatingAgent,
+        agent("h", "docs-site", .usingTool("WebSearch")),
         agent("c", "Trip ideas", .responding, kind: .chat),
         agent("d", "dotfiles", .idle),
         agent("g", "Recipes", .idle, kind: .chat),

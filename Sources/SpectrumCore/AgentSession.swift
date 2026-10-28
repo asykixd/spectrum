@@ -20,6 +20,8 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     public var permission: PermissionPrompt?
     /// The agent's own plan, when it keeps one.
     public var tasks = TaskList()
+    /// Subagents this agent is waiting on right now.
+    public var subagents = 0
     public let startedAt: Date
     public var updatedAt: Date
 
@@ -75,10 +77,22 @@ public struct SessionStore: Equatable, Sendable {
         // Any later event means the request was settled, by the island or in the terminal.
         session.permission = event.permissionPrompt
         if let change = event.taskChange { session.tasks.apply(change) }
+        session.subagents = Self.subagents(session.subagents, after: event)
         session.cwd = event.cwd ?? session.cwd
         session.transcriptPath = event.transcriptPath ?? session.transcriptPath
         session.updatedAt = date
         sessions[event.sessionID] = session
+    }
+
+    private static func subagents(_ count: Int, after event: AgentEvent) -> Int {
+        let delegating = event.toolName.map { ToolKind($0) == .delegating } ?? false
+        switch event.kind {
+        case .preToolUse where delegating: return count + 1
+        case .postToolUse where delegating: return max(count - 1, 0)
+        // A turn's boundaries reset the count, so a lost finish can't leave a ghost intern.
+        case .stop, .userPromptSubmit, .sessionStart: return 0
+        default: return count
+        }
     }
 
     /// The island answered the request; the agent carries on without waiting for its next event.

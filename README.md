@@ -45,7 +45,8 @@ desks, talk in the meeting room and doze on the sofa.
   Hover a row and press ✕ to hide it until it does something new.
 - **Conversation**: click a Claude Code session to read its recent messages and tool calls, and
   reply to it when it is idle.
-- **Office**: desks for working agents with screens showing their activity, a meeting room where
+- **Office**: desks for working agents with screens showing their activity (a page while reading,
+  a terminal, a browser, code) and subagents as small interns on the desk, a meeting room where
   you and Claude talk through a chat, a lounge for idle agents. Hover to highlight, click to open.
   The room follows your Mac's clock, from a blue sky to a lamp-lit night.
 

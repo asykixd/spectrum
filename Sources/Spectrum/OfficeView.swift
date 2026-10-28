@@ -488,6 +488,10 @@ struct OfficeScene {
 
         drawMonitor(canvas, x: x + 2, top: top - 8, activity: activity, seed: seed)
         drawDesk(canvas, x: x, top: top)
+        if session.subagents > 0 {
+            drawInterns(
+                canvas, x: x, top: top, count: session.subagents, accent: look.shirt, seed: seed)
+        }
         // Legs dangle in the gap under the desk, kicking while the agent works.
         drawLegs(canvas, x: characterX, y: top + 8, swing: activity.isWorking && beat)
 
@@ -532,16 +536,10 @@ struct OfficeScene {
         let step = Int(time * 6)
 
         switch activity {
-        case .usingTool, .responding:
-            canvas.fill(screenX, screenY, 10, 5, Color(hex: 0x0B1F14))
-            for row in 0..<5 {
-                let hash = (step + row * 7 + Int(seed)) &* 2_654_435_761
-                let length = Double(2 + abs(hash >> 7) % 7)
-                let indent = Double(abs(hash >> 3) % 3)
-                canvas.fill(
-                    screenX + indent, screenY + Double(row), min(length, 10 - indent), 0.6,
-                    Color(hex: 0x4ADE80, opacity: row == 4 ? 1 : 0.7))
-            }
+        case .usingTool(let tool):
+            drawToolScreen(canvas, x: screenX, y: screenY, tool: ToolKind(tool), seed: seed)
+        case .responding:
+            drawCode(canvas, x: screenX, y: screenY, seed: seed)
         case .thinking:
             canvas.fill(screenX, screenY, 10, 5, Color(hex: 0x0E1630))
             for dot in 0..<3 {
@@ -564,6 +562,57 @@ struct OfficeScene {
         }
         // Screen glow on the desk.
         canvas.fill(x, top + 8, 12, 0.6, glow(for: activity).opacity(0.35))
+    }
+
+    /// Green code scrolling past, for edits and writing an answer.
+    private func drawCode(_ canvas: PixelCanvas, x: Double, y: Double, seed: Double) {
+        let step = Int(time * 6)
+        canvas.fill(x, y, 10, 5, Color(hex: 0x0B1F14))
+        for row in 0..<5 {
+            let hash = (step + row * 7 + Int(seed)) &* 2_654_435_761
+            let length = Double(2 + abs(hash >> 7) % 7)
+            let indent = Double(abs(hash >> 3) % 3)
+            canvas.fill(
+                x + indent, y + Double(row), min(length, 10 - indent), 0.6,
+                Color(hex: 0x4ADE80, opacity: row == 4 ? 1 : 0.7))
+        }
+    }
+
+    private func drawToolScreen(
+        _ canvas: PixelCanvas, x: Double, y: Double, tool: ToolKind, seed: Double
+    ) {
+        let step = Int(time * 6)
+        switch tool {
+        case .writing, .delegating:
+            drawCode(canvas, x: x, y: y, seed: seed)
+        case .reading:
+            // A page of text slowly scrolling up.
+            canvas.fill(x, y, 10, 5, Color(hex: 0xE8E4D8))
+            for row in 0..<5 {
+                let hash = (step / 3 + row) &* 2_654_435_761
+                let length = Double(5 + abs(hash >> 5) % 4)
+                canvas.fill(x + 1, y + Double(row) + 0.2, length, 0.5, Color(hex: 0x6B6B7B))
+            }
+        case .terminal:
+            canvas.fill(x, y, 10, 5, Color(hex: 0x050505))
+            for row in 0..<3 {
+                let hash = (step / 2 + row * 5 + Int(seed)) &* 2_654_435_761
+                canvas.fill(x + 1, y + Double(row) + 0.5, 1, 0.5, Color(hex: 0x4ADE80))
+                canvas.fill(
+                    x + 2.5, y + Double(row) + 0.5, Double(2 + abs(hash >> 6) % 5), 0.5,
+                    .white.opacity(0.8))
+            }
+            if Int(time * 2).isMultiple(of: 2) {
+                canvas.fill(x + 1, y + 3.6, 1, 1, .white)
+            }
+        case .browsing:
+            canvas.fill(x, y, 10, 5, .white)
+            canvas.fill(x, y, 10, 1, Color(hex: 0x60A5FA))
+            canvas.fill(x + 1, y + 1.6, 3, 2.6, Color(hex: 0xBFDBFE))
+            for row in 0..<3 {
+                canvas.fill(x + 5, y + 1.6 + Double(row), 4, 0.5, Color(hex: 0x9CA3AF))
+            }
+        }
     }
 
     private func glow(for activity: AgentActivity) -> Color {
@@ -605,6 +654,27 @@ struct OfficeScene {
                 palette: ["z": .white.opacity(opacity * 0.8)])
         case .usingTool, .responding, .finished:
             break
+        }
+    }
+
+    /// Subagents stand on the desk as small helpers, one per running subagent.
+    private func drawInterns(
+        _ canvas: PixelCanvas, x: Double, top: Double, count: Int, accent: Color, seed: Double
+    ) {
+        let shown = min(count, 3)
+        for index in 0..<shown {
+            let hop = Int(time * 4 + seed + Double(index) * 1.3).isMultiple(of: 2) ? 0.0 : 0.5
+            let left = x + 1 + Double(index) * 5
+            let bottom = top - hop
+            canvas.fill(left, bottom - 3, 4, 2, ClaudeLook.orange)
+            canvas.fill(left + 0.8, bottom - 2.6, 0.6, 0.6, .black)
+            canvas.fill(left + 2.6, bottom - 2.6, 0.6, 0.6, .black)
+            canvas.fill(left + 0.5, bottom - 1, 1, 1, ClaudeLook.orange)
+            canvas.fill(left + 2.5, bottom - 1, 1, 1, ClaudeLook.orange)
+            canvas.fill(left + 1, bottom - 4, 2, 1, accent)
+        }
+        if count > shown {
+            label(canvas, "+\(count - shown)", x: x + 17, y: top - 2, size: 2)
         }
     }
 

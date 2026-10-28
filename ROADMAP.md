@@ -18,7 +18,7 @@
 - [ ] Codex support
 - [ ] Browsers and other players in now playing (MediaRemote ignores third-party apps since macOS 15.4)
 - [ ] Waveform driven by real audio levels instead of an animation
-- [ ] Synced lyrics in the expanded player (LRCLIB)
+- [x] Synced lyrics in the expanded player (LRCLIB)
 
 ## Later
 - [ ] Cursor and GitHub Copilot agents

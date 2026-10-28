@@ -30,6 +30,8 @@ final class NotchModel {
 
     var nowPlaying: NowPlaying? { didSet { updateMode() } }
     var artwork: NSImage?
+    /// Synced lyrics of the playing track, when lrclib.net has them.
+    var lyrics: Lyrics?
     var accent: Color = .white
 
     var codeSessions: [AgentSession] = [] { didSet { refreshSessions() } }
@@ -225,14 +227,20 @@ enum NotchLayout {
     /// Signals stay quiet: each ear only fits a small status icon next to the hardware notch.
     static let signalEarWidth: CGFloat = 30
 
-    static func size(for mode: NotchMode, geometry: NotchGeometry) -> CGSize {
+    /// Extra height of the expanded player for the lyrics line.
+    static let lyricsHeight: CGFloat = 24
+
+    static func size(for mode: NotchMode, geometry: NotchGeometry, lyrics: Bool = false)
+        -> CGSize
+    {
         let notch = geometry.notch.size
         switch mode {
         case .hidden: return notch
         case .compact: return geometry.panel.size
         case .expanded:
             return CGSize(
-                width: expandedSize.width, height: notch.height + expandedSize.height)
+                width: expandedSize.width,
+                height: notch.height + expandedSize.height + (lyrics ? lyricsHeight : 0))
         case .agents:
             return CGSize(width: agentsSize.width, height: notch.height + agentsSize.height)
         case .attention, .done:
@@ -262,8 +270,10 @@ enum NotchLayout {
     }
 
     /// Visible island in screen coordinates.
-    static func visibleRect(for mode: NotchMode, geometry: NotchGeometry) -> CGRect {
-        let size = size(for: mode, geometry: geometry)
+    static func visibleRect(for mode: NotchMode, geometry: NotchGeometry, lyrics: Bool = false)
+        -> CGRect
+    {
+        let size = size(for: mode, geometry: geometry, lyrics: lyrics)
         return CGRect(
             x: geometry.notch.midX - size.width / 2, y: geometry.notch.maxY - size.height,
             width: size.width, height: size.height)

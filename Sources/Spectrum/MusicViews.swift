@@ -123,6 +123,9 @@ struct ExpandedMusicView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
+                if let lyrics = model.lyrics {
+                    LyricLine(lyrics: lyrics, track: track, accent: model.accent)
+                }
             }
         }
     }
@@ -147,6 +150,30 @@ private struct PlayerIcon: View {
         var rect = CGRect(x: 0, y: 0, width: 36, height: 36)
         return NSWorkspace.shared.icon(forFile: url.path)
             .cgImage(forProposedRect: &rect, context: nil, hints: nil)
+    }
+}
+
+/// The line being sung, under the player.
+private struct LyricLine: View {
+    let lyrics: Lyrics
+    let track: NowPlaying
+    let accent: Color
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.25)) { timeline in
+            let line = lyrics.line(at: track.position(at: timeline.date)) ?? "♪"
+            Text(line)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(accent)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .id(line)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: line)
+        }
+        .frame(height: NotchLayout.lyricsHeight, alignment: .top)
     }
 }
 

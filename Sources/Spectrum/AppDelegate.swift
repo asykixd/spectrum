@@ -171,7 +171,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// compact so clicks reach the menu bar underneath.
     private func tick() {
         guard let model, let panel else { return }
-        let rect = NotchLayout.visibleRect(for: model.mode, geometry: model.geometry)
+        let rect = NotchLayout.visibleRect(
+            for: model.mode, geometry: model.geometry, lyrics: model.lyrics != nil)
         let hovering = rect.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation)
         if model.isHovering != hovering { model.isHovering = hovering }
         // A half-typed reply keeps the panel open even if the pointer drifts away.

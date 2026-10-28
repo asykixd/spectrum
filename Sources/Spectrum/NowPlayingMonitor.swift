@@ -163,7 +163,12 @@ final class NowPlayingMonitor {
         guard let track, !track.isSameTrack(as: previous) else { return }
         model.artwork = nil
         model.accent = .white
+        model.lyrics = nil
         Task { await loadArtwork(for: track) }
+        if model.settings.showLyrics {
+            // The player's own artist field: featured artists added later would miss the match.
+            Task { await loadLyrics(for: track) }
+        }
         if let uri = track.trackURI, spotifyArtists[uri] == nil {
             Task { await loadSpotifyArtists(uri: uri) }
         }
@@ -179,6 +184,20 @@ final class NowPlayingMonitor {
         if model.nowPlaying?.trackURI == uri {
             model.nowPlaying?.artist = artists.joined(separator: ", ")
         }
+    }
+
+    private func loadLyrics(for track: NowPlaying) async {
+        guard let url = LRCLib.url(for: track) else { return }
+        var request = URLRequest(url: url)
+        // lrclib asks clients to identify themselves.
+        request.setValue(
+            "Spectrum (https://github.com/asykixd/spectrum)", forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+            (response as? HTTPURLResponse)?.statusCode == 200,
+            let lyrics = LRCLib.lyrics(from: data),
+            model.nowPlaying?.isSameTrack(as: track) == true
+        else { return }
+        model.lyrics = lyrics
     }
 
     private func loadArtwork(for track: NowPlaying) async {

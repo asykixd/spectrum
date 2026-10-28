@@ -33,6 +33,8 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     public var flashWhenDone = true
     /// Let Claude Code permission requests be allowed or denied from the island.
     public var answerPermissions = true
+    /// Fetch synced lyrics from lrclib.net for the expanded player.
+    public var showLyrics = true
 
     public init() {}
 
@@ -72,6 +74,8 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         answerPermissions =
             try container.decodeIfPresent(Bool.self, forKey: .answerPermissions)
             ?? defaults.answerPermissions
+        showLyrics =
+            try container.decodeIfPresent(Bool.self, forKey: .showLyrics) ?? defaults.showLyrics
     }
 
     public static func load(from defaults: UserDefaults, key: String = "settings")

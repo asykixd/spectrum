@@ -5,7 +5,9 @@ struct NotchRootView: View {
     let model: NotchModel
 
     private var mode: NotchMode { model.mode }
-    private var size: CGSize { NotchLayout.size(for: mode, geometry: model.geometry) }
+    private var size: CGSize {
+        NotchLayout.size(for: mode, geometry: model.geometry, lyrics: model.lyrics != nil)
+    }
     private var shape: UnevenRoundedRectangle {
         let radius = NotchLayout.bottomRadius(for: mode)
         return UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius)

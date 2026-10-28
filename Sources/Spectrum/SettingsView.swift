@@ -8,6 +8,10 @@ struct SettingsView: View {
         Form {
             Section("Notch") {
                 Toggle("Show music while it plays", isOn: $model.settings.showMusic)
+                Toggle(isOn: $model.settings.showLyrics) {
+                    Text("Show synced lyrics in the expanded player")
+                    Text("Looks up the playing track's title and artist on lrclib.net.")
+                }
                 Toggle(
                     "Trackpad haptics when the island opens and closes",
                     isOn: $model.settings.haptics)

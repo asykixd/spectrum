@@ -30,7 +30,8 @@ desks, talk in the meeting room and doze on the sofa.
 
 - Invisible when idle; a compact live activity with artwork and a waveform tinted by the cover
   while music plays.
-- Hover to expand: title, every featured artist, progress, previous / play-pause / next.
+- Hover to expand: title, every featured artist, progress, previous / play-pause / next, and the
+  line being sung when [lrclib.net](https://lrclib.net) has synced lyrics for the track.
 - Two-finger swipe across the player changes the track.
 - Spotify and Apple Music.
 
@@ -128,6 +129,7 @@ The gear in the agents panel opens Settings, installs or removes the hooks and q
 | Setting | Default |
 | --- | --- |
 | Show music while it plays | On |
+| Show synced lyrics in the expanded player | On |
 | Blink when an agent needs permission or an answer | On |
 | Flash a checkmark when a task finishes | On |
 | Allow or deny permission requests from the island | On |

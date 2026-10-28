@@ -69,6 +69,9 @@ enum PreviewRenderer {
                     title: "Midnight Drive", artist: "Neon Coast, Lumen", duration: 214,
                     elapsed: 71, sampledAt: Date(), isPlaying: true,
                     bundleID: "com.spotify.client")
+                if scene.hovering {
+                    model.lyrics = Lyrics(lrc: "[01:05.00] Neon lights are fading into the rain")
+                }
             }
             if let before = scene.before { model.codeSessions = before }
             model.chatSessions = scene.sessions.filter { $0.kind == .chat }

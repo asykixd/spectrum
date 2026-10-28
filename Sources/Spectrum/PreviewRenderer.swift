@@ -32,6 +32,9 @@ enum PreviewRenderer {
             Scene(name: "expanded", music: true, hovering: true),
             Scene(name: "attention", sessions: [agent("b", "billing-api", .waitingForUser)]),
             Scene(
+                name: "compact-attention", sessions: [agent("b", "billing-api", .waitingForUser)],
+                music: true),
+            Scene(
                 name: "done", sessions: [agent("w", "weather-app", .idle)],
                 before: [agent("w", "weather-app", .thinking)]),
             Scene(name: "agents-sessions", sessions: listSessions, agentsOpen: true),

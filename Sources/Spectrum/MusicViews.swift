@@ -64,14 +64,30 @@ struct CompactMusicView: View {
     let model: NotchModel
 
     var body: some View {
-        HStack(spacing: 0) {
-            ArtworkView(image: model.artwork, size: 22, radius: 6)
-            Spacer(minLength: 0)
-            WaveformView(isPlaying: model.nowPlaying?.isPlaying ?? false, color: model.accent)
+        TimelineView(.animation(minimumInterval: 1.0 / 20, paused: !needsYou)) { timeline in
+            let blink = SignalView.blink(at: timeline.date)
+            HStack(spacing: 0) {
+                ArtworkView(image: model.artwork, size: 22, radius: 6)
+                    .overlay(alignment: .bottomTrailing) {
+                        if let signal = model.signal {
+                            SignalView.Icon(signal: signal, blink: blink, size: 9)
+                                .padding(2)
+                                .background(Circle().fill(.black))
+                                .offset(x: 6, y: 6)
+                        }
+                    }
+                Spacer(minLength: 0)
+                WaveformView(isPlaying: model.nowPlaying?.isPlaying ?? false, color: model.accent)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: model.geometry.notch.height)
+            .overlay {
+                if needsYou { SignalView.outline(blink: blink) }
+            }
         }
-        .padding(.horizontal, 10)
-        .frame(height: model.geometry.notch.height)
     }
+
+    private var needsYou: Bool { model.signal?.isNeedsYou ?? false }
 }
 
 struct ExpandedMusicView: View {

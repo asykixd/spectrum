@@ -2,7 +2,7 @@
 public enum NotchMode: Hashable, Sendable {
     /// Nothing outside the hardware notch: Spectrum looks like it isn't running.
     case hidden
-    /// Music is playing: artwork and waveform on the notch ears.
+    /// Music is playing: artwork and waveform on the notch ears, with any agent signal as a badge.
     case compact
     /// Pointer over the live activity: full player controls.
     case expanded
@@ -23,10 +23,12 @@ public enum NotchMode: Hashable, Sendable {
         if isHovering, hasTrack, current == .compact || current == .expanded {
             return .expanded
         }
+        // Signals are small enough to ride on the playing activity instead of replacing it.
+        if isPlaying { return .compact }
         switch signal {
         case .needsYou: return .attention
         case .done: return .done
-        case nil: return isPlaying ? .compact : .hidden
+        case nil: return .hidden
         }
     }
 }

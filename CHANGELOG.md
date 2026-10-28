@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format follows
 
 - Quieter island signals: a small warning icon with a thin blinking outline when an agent needs
   you, and a small checkmark that stays for three seconds instead of 1.6.
+- Agent signals no longer hide the playing music: the icon rides on the artwork as a badge and
+  the outline blinks around the live activity.
 
 ## [1.0.0] - 2026-10-27
 

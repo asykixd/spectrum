@@ -67,12 +67,16 @@ private func session(
     #expect(AgentActivity.idle.applying(permission) == .waitingForUser)
 }
 
-@Test func attentionOutranksMusicButNotThePanel() {
+@Test func musicKeepsTheIslandWhileASignalShows() {
     let needs = AttentionTracker.Signal.needsYou(session("a", .waitingForUser))
 
     #expect(
         NotchMode.resolve(
             current: .compact, isPlaying: true, hasTrack: true, isHovering: false,
+            agentsOpen: false, signal: needs) == .compact)
+    #expect(
+        NotchMode.resolve(
+            current: .compact, isPlaying: false, hasTrack: true, isHovering: false,
             agentsOpen: false, signal: needs) == .attention)
     #expect(
         NotchMode.resolve(

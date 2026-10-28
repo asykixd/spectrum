@@ -58,7 +58,8 @@ desks, talk in the meeting room and doze on the sofa.
 
 The island calls you only when it matters, and quietly. When an agent needs permission or an
 answer a small warning icon and a thin outline blink until you look; when a task finishes a small
-checkmark shows for three seconds and goes away.
+checkmark shows for three seconds and goes away. While music plays, the icon sits on the artwork
+instead of replacing it.
 
 <img src="docs/screenshots/attention.png" width="470" alt="An agent needs you">
 <img src="docs/screenshots/done.png" width="470" alt="A task finished">

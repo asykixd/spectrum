@@ -235,6 +235,9 @@ private struct SessionRow: View {
     var body: some View {
         HStack(spacing: 12) {
             AgentAvatar(session: session, style: style)
+                .overlay {
+                    if !session.tasks.isEmpty { TaskRing(fraction: session.tasks.fraction) }
+                }
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.projectName)
                     .font(.system(size: 13, weight: .semibold))
@@ -244,6 +247,11 @@ private struct SessionRow: View {
                     Text(session.statusText)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(isWaiting ? Color(hex: 0xF5B544) : .white.opacity(0.6))
+                    if !session.tasks.isEmpty {
+                        Text(taskSummary)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
                 }
             }
             .lineLimit(1)
@@ -297,6 +305,12 @@ private struct SessionRow: View {
         }
     }
 
+    private var taskSummary: String {
+        let tasks = session.tasks
+        let count = "\(tasks.completed)/\(tasks.total)"
+        return tasks.current.map { "· \(count) \($0)" } ?? "· \(count)"
+    }
+
     private func abbreviated(_ path: String) -> String {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         return path.hasPrefix(home) ? "~" + path.dropFirst(home.count) : path
@@ -307,6 +321,22 @@ private struct SessionRow: View {
         if seconds < 60 { return "\(seconds)s" }
         if seconds < 3600 { return "\(seconds / 60)m" }
         return "\(seconds / 3600)h"
+    }
+}
+
+/// How much of its plan an agent has done, drawn around its avatar.
+private struct TaskRing: View {
+    let fraction: Double
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(.white.opacity(0.1), lineWidth: 2)
+            Circle()
+                .trim(from: 0, to: fraction)
+                .stroke(Color(hex: 0x4ADE80), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .padding(-3)
     }
 }
 

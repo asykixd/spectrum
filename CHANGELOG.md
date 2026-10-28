@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows
 - Allow or deny Claude Code permission requests from the island: hover the warning to see the
   command, file or URL. Without an answer the terminal asks after a minute. Hooks from an older
   version are updated on launch.
+- Task progress in the sessions list: a ring around the avatar and "2/4 Writing the view", from
+  the agent's `TodoWrite` list or the newer `TaskCreate` / `TaskUpdate` tools.
 
 ### Changed
 

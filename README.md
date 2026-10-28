@@ -41,7 +41,8 @@ desks, talk in the meeting room and doze on the sofa.
 - Double-tap <kbd>⌘</kbd> (or <kbd>⌥</kbd> / <kbd>⌃</kbd>) for the agents panel; move the pointer
   away, press <kbd>Esc</kbd> or click outside to close it.
 - **Sessions**: Claude Code agents, Claude app chats and AFK agents in separate groups, with what
-  each one is doing right now. Hover a row and press ✕ to hide it until it does something new.
+  each one is doing right now. A ring around the avatar shows how much of its plan is done.
+  Hover a row and press ✕ to hide it until it does something new.
 - **Conversation**: click a Claude Code session to read its recent messages and tool calls, and
   reply to it when it is idle.
 - **Office**: desks for working agents with screens showing their activity, a meeting room where

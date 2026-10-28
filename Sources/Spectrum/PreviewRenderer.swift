@@ -141,9 +141,24 @@ enum PreviewRenderer {
         return session
     }
 
+    private static var planningAgent: AgentSession {
+        var session = agent("a", "weather-app", .usingTool("Bash"))
+        session.tasks.apply(
+            .replaceAll(
+                [
+                    .init(id: "0", title: "Add model", status: .completed),
+                    .init(id: "1", title: "Fetch forecast", status: .completed),
+                    .init(
+                        id: "2", title: "Write view", activeForm: "Writing the view",
+                        status: .inProgress),
+                    .init(id: "3", title: "Run tests", status: .pending),
+                ]))
+        return session
+    }
+
     /// Small enough to fit the list without scrolling.
     private static let listSessions = [
-        agent("a", "weather-app", .usingTool("Bash")),
+        planningAgent,
         agent("b", "billing-api", .waitingForUser, minutesAgo: 1),
         agent("c", "Trip ideas", .responding, kind: .chat),
         agent("d", "dotfiles", .idle, minutesAgo: 12),

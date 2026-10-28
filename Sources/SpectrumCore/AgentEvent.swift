@@ -25,6 +25,8 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     public let message: String?
     /// String fields of the tool's input; other value types are dropped.
     public let toolInput: [String: LooseString]?
+    /// How a settled task tool call changed the agent's plan.
+    public let taskChange: TaskList.Change?
 
     enum CodingKeys: String, CodingKey {
         case sessionID = "session_id"
@@ -34,6 +36,27 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         case transcriptPath = "transcript_path"
         case message
         case toolInput = "tool_input"
+        case toolResponse = "tool_response"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        sessionID = try container.decode(String.self, forKey: .sessionID)
+        kind = try container.decode(Kind.self, forKey: .kind)
+        cwd = try container.decodeIfPresent(String.self, forKey: .cwd)
+        toolName = try container.decodeIfPresent(String.self, forKey: .toolName)
+        transcriptPath = try container.decodeIfPresent(String.self, forKey: .transcriptPath)
+        message = try container.decodeIfPresent(String.self, forKey: .message)
+        toolInput = try? container.decodeIfPresent([String: LooseString].self, forKey: .toolInput)
+        // Tool payloads vary by tool and version; a shape we don't know just means no change.
+        taskChange =
+            kind == .postToolUse
+            ? TaskToolPayload.change(
+                tool: toolName,
+                input: try? container.decodeIfPresent(TaskToolPayload.self, forKey: .toolInput),
+                response: try? container.decodeIfPresent(
+                    TaskToolPayload.Created.self, forKey: .toolResponse))
+            : nil
     }
 
     /// What a `PermissionRequest` asks to do, in a form short enough for the island.

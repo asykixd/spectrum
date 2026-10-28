@@ -18,6 +18,8 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     public var activity: AgentActivity
     /// A permission request the island can answer, while the hook still waits for it.
     public var permission: PermissionPrompt?
+    /// The agent's own plan, when it keeps one.
+    public var tasks = TaskList()
     public let startedAt: Date
     public var updatedAt: Date
 
@@ -72,6 +74,7 @@ public struct SessionStore: Equatable, Sendable {
         session.activity = session.activity.applying(event)
         // Any later event means the request was settled, by the island or in the terminal.
         session.permission = event.permissionPrompt
+        if let change = event.taskChange { session.tasks.apply(change) }
         session.cwd = event.cwd ?? session.cwd
         session.transcriptPath = event.transcriptPath ?? session.transcriptPath
         session.updatedAt = date

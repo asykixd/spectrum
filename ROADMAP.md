@@ -7,7 +7,7 @@
 - [ ] Launch at login
 
 - [x] Allow or deny permission requests from the island (`PermissionRequest` hook)
-- [ ] Task progress from `TodoWrite` on the avatar and under the island
+- [x] Task progress from `TodoWrite` and the Task tools around the avatar in the sessions list
 - [ ] Office tool animations: reading, typing, terminal, globe for web search
 - [ ] Subagents as interns next to their agent in the office
 - [ ] Boss's office: hours worked per agent, what each did, tokens and money spent, 5-hour limit

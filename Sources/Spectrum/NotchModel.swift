@@ -44,6 +44,7 @@ final class NotchModel {
             guard selectedSessionID != oldValue else { return }
             transcript = []
             replyError = nil
+            if selectedSessionID != nil { newSessionOpen = false }
         }
     }
     var transcript: [TranscriptMessage] = []
@@ -67,6 +68,13 @@ final class NotchModel {
     private(set) var signal: AttentionTracker.Signal?
     var isHovering = false { didSet { updateMode() } }
     var tab: AgentsTab = .sessions
+    /// The sessions tab shows the form for starting a new Claude Code session.
+    var newSessionOpen = false
+    var newSessionDirectory: String?
+    var newSessionPrompt = ""
+    var newSessionError: String?
+    /// Folders Claude Code ran in lately, offered when starting a session.
+    var recentProjects: [String] = []
     /// Today's work and spend, filled in while the boss tab is open.
     var bossReport: BossReport?
     var hooksInstalled = false
@@ -79,6 +87,8 @@ final class NotchModel {
     @ObservationIgnored var onOpenSettings: () -> Void = {}
     @ObservationIgnored var onOpenChat: (AgentSession) -> Void = { _ in }
     @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }
+    @ObservationIgnored var onStartSession: (String, String?) -> Void = { _, _ in }
+    @ObservationIgnored var onChooseFolder: () -> Void = {}
     @ObservationIgnored var onPermission: (AgentSession, PermissionDecision) -> Void = { _, _ in }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
     @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
@@ -115,6 +125,25 @@ final class NotchModel {
         case .chat:
             onOpenChat(session)
         }
+    }
+
+    func openNewSession() {
+        tab = .sessions
+        selectedSessionID = nil
+        newSessionError = nil
+        newSessionOpen = true
+        Task {
+            let projects = await Task.detached(priority: .utility) {
+                NewSession.recentProjects(in: SpectrumPaths.claudeProjects)
+            }.value
+            recentProjects = projects
+            if newSessionDirectory == nil { newSessionDirectory = projects.first }
+        }
+    }
+
+    func startNewSession() {
+        guard let directory = newSessionDirectory else { return }
+        onStartSession(directory, AgentReply.normalizedPrompt(newSessionPrompt))
     }
 
     func dismiss(_ session: AgentSession) {

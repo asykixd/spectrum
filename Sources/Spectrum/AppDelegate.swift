@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var chats: ClaudeChatMonitor?
     private var transcripts: TranscriptMonitor?
     private var boss: BossMonitor?
+    private var launcher: SessionLauncher?
     private var replies: ReplySender?
     private var settingsWindow: NSWindow?
     private var dismissal = HoverDismissal()
@@ -104,6 +105,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         transcripts.start()
         let boss = BossMonitor(model: model)
         boss.start()
+        let launcher = SessionLauncher(model: model)
+        model.onStartSession = { [weak launcher] directory, prompt in
+            launcher?.start(in: directory, prompt: prompt)
+        }
+        model.onChooseFolder = { [weak launcher] in launcher?.chooseFolder() }
         let replies = ReplySender(model: model)
         model.onReply = { [weak replies] prompt, session in replies?.send(prompt, to: session) }
 
@@ -134,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.chats = chats
         self.transcripts = transcripts
         self.boss = boss
+        self.launcher = launcher
         self.replies = replies
         self.shortcuts = shortcuts
     }

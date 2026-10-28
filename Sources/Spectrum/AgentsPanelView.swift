@@ -17,6 +17,15 @@ struct AgentsPanelView: View {
                 Spacer().frame(width: model.geometry.notch.width)
                 HStack(spacing: 12) {
                     StatusSummary(working: working, waiting: waiting)
+                    Button(action: model.openNewSession) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .frame(width: 22, height: 22)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("New Claude Code session")
                     PanelMenu(model: model)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -29,6 +38,8 @@ struct AgentsPanelView: View {
                 case .sessions:
                     if let session = model.selectedSession {
                         ConversationView(model: model, session: session)
+                    } else if model.newSessionOpen {
+                        NewSessionView(model: model)
                     } else {
                         SessionsListView(model: model)
                     }

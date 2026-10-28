@@ -16,6 +16,7 @@ enum PreviewRenderer {
         var conversation = false
         var hour = 14
         var boss = false
+        var newSession = false
         /// Activities the sessions had a moment ago, to trigger the done checkmark.
         var before: [AgentSession]?
     }
@@ -44,6 +45,7 @@ enum PreviewRenderer {
                 name: "agents-conversation", sessions: listSessions, agentsOpen: true,
                 conversation: true),
             Scene(name: "agents-office", tab: .office, sessions: officeSessions, agentsOpen: true),
+            Scene(name: "agents-new-session", agentsOpen: true, newSession: true),
             Scene(
                 name: "agents-boss", tab: .boss, sessions: listSessions, agentsOpen: true,
                 boss: true),
@@ -76,6 +78,14 @@ enum PreviewRenderer {
                 model.transcript = sampleTranscript
             }
             if scene.boss { model.bossReport = sampleReport }
+            if scene.newSession {
+                model.newSessionOpen = true
+                model.recentProjects = [
+                    "~/code/weather-app", "~/code/billing-api", "~/code/landing-page",
+                    "~/code/dotfiles", "~/code/ml-pipeline",
+                ]
+                model.newSessionDirectory = "~/code/weather-app"
+            }
             if scene.hovering { model.isHovering = true }
             if scene.agentsOpen { model.agentsOpen = true }
 

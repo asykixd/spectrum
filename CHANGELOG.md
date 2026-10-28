@@ -16,6 +16,8 @@ All notable changes to this project are documented here. The format follows
 - Office monitors show what the tool does: a page of text while reading, a terminal for
   commands, a browser for web search, code for edits.
 - Subagents appear as small interns on their agent's desk.
+- Start a new Claude Code session from the panel: pick a recent folder, type an optional first
+  prompt, and it opens in Terminal.
 - Boss tab: today's cost at API prices, tokens, time agents worked and the current five-hour
   window, with a row per project showing its time, cost and last prompt.
 

@@ -43,6 +43,8 @@ desks, talk in the meeting room and doze on the sofa.
 - **Sessions**: Claude Code agents, Claude app chats and AFK agents in separate groups, with what
   each one is doing right now. A ring around the avatar shows how much of its plan is done.
   Hover a row and press ✕ to hide it until it does something new.
+- **New session**: the ＋ button in the panel picks one of your recent Claude Code folders (or any
+  other) and an optional first prompt, and opens the session in Terminal.
 - **Conversation**: click a Claude Code session to read its recent messages and tool calls, and
   reply to it when it is idle.
 - **Office**: desks for working agents with screens showing their activity (a page while reading,

@@ -11,7 +11,7 @@
 - [x] Office tool animations: a page for reading, code for edits, a terminal, a browser for the web
 - [x] Subagents as interns on their agent's desk in the office
 - [x] Boss tab: time worked per project, what each did, tokens and money at API prices, the five-hour window
-- [ ] Start a new Claude Code session in a project from the panel
+- [x] Start a new Claude Code session in a project from the panel (opens in Terminal)
 - [ ] Session summary when a task finishes: files changed, lines added and removed
 
 ## Next

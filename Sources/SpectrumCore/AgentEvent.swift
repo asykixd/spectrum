@@ -27,6 +27,8 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     public let toolInput: [String: LooseString]?
     /// How a settled task tool call changed the agent's plan.
     public let taskChange: TaskList.Change?
+    /// Lines a settled edit or write changed.
+    public let fileChange: FileChange?
 
     enum CodingKeys: String, CodingKey {
         case sessionID = "session_id"
@@ -56,6 +58,12 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
                 input: try? container.decodeIfPresent(TaskToolPayload.self, forKey: .toolInput),
                 response: try? container.decodeIfPresent(
                     TaskToolPayload.Created.self, forKey: .toolResponse))
+            : nil
+        fileChange =
+            kind == .postToolUse
+            ? EditToolPayload.change(
+                tool: toolName,
+                input: try? container.decodeIfPresent(EditToolPayload.self, forKey: .toolInput))
             : nil
     }
 

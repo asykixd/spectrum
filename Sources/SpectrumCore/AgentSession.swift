@@ -22,6 +22,8 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     public var tasks = TaskList()
     /// Subagents this agent is waiting on right now.
     public var subagents = 0
+    /// Files changed since the user's last prompt.
+    public var changes = ChangeSummary()
     public let startedAt: Date
     public var updatedAt: Date
 
@@ -78,6 +80,8 @@ public struct SessionStore: Equatable, Sendable {
         session.permission = event.permissionPrompt
         if let change = event.taskChange { session.tasks.apply(change) }
         session.subagents = Self.subagents(session.subagents, after: event)
+        if event.kind == .userPromptSubmit { session.changes = ChangeSummary() }
+        if let change = event.fileChange { session.changes.record(change) }
         session.cwd = event.cwd ?? session.cwd
         session.transcriptPath = event.transcriptPath ?? session.transcriptPath
         session.updatedAt = date

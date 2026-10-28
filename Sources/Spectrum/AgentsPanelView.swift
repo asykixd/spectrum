@@ -278,6 +278,9 @@ private struct SessionRow: View {
                             .font(.system(size: 11))
                             .foregroundStyle(.white.opacity(0.4))
                     }
+                    if !session.changes.isEmpty {
+                        ChangeCounts(changes: session.changes)
+                    }
                 }
             }
             .lineLimit(1)
@@ -347,6 +350,21 @@ private struct SessionRow: View {
         if seconds < 60 { return "\(seconds)s" }
         if seconds < 3600 { return "\(seconds / 60)m" }
         return "\(seconds / 3600)h"
+    }
+}
+
+/// "· 3 files +120 −14" for what the agent changed since the last prompt.
+private struct ChangeCounts: View {
+    let changes: ChangeSummary
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(changes.files == 1 ? "· 1 file" : "· \(changes.files) files")
+                .foregroundStyle(.white.opacity(0.4))
+            Text("+\(changes.added)").foregroundStyle(Color(hex: 0x4ADE80, opacity: 0.8))
+            Text("−\(changes.removed)").foregroundStyle(Color(hex: 0xF87171, opacity: 0.8))
+        }
+        .font(.system(size: 11).monospacedDigit())
     }
 }
 

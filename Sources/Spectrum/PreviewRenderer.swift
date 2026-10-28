@@ -171,12 +171,19 @@ enum PreviewRenderer {
         return session
     }
 
+    private static var finishedAgent: AgentSession {
+        var session = agent("d", "dotfiles", .idle, minutesAgo: 12)
+        session.changes.record(FileChange(path: "~/.zshrc", added: 18, removed: 31))
+        session.changes.record(FileChange(path: "~/.gitconfig", added: 4, removed: 2))
+        return session
+    }
+
     /// Small enough to fit the list without scrolling.
     private static let listSessions = [
         planningAgent,
         agent("b", "billing-api", .waitingForUser, minutesAgo: 1),
         agent("c", "Trip ideas", .responding, kind: .chat),
-        agent("d", "dotfiles", .idle, minutesAgo: 12),
+        finishedAgent,
     ]
 
     private static var delegatingAgent: AgentSession {

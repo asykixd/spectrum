@@ -41,7 +41,8 @@ desks, talk in the meeting room and doze on the sofa.
 - Double-tap <kbd>⌘</kbd> (or <kbd>⌥</kbd> / <kbd>⌃</kbd>) for the agents panel; move the pointer
   away, press <kbd>Esc</kbd> or click outside to close it.
 - **Sessions**: Claude Code agents, Claude app chats and AFK agents in separate groups, with what
-  each one is doing right now. A ring around the avatar shows how much of its plan is done.
+  each one is doing right now. A ring around the avatar shows how much of its plan is done, and
+  "2 files +22 −33" what it changed since your last prompt.
   Hover a row and press ✕ to hide it until it does something new.
 - **New session**: the ＋ button in the panel picks one of your recent Claude Code folders (or any
   other) and an optional first prompt, and opens the session in Terminal.

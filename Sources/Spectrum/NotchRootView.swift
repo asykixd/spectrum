@@ -22,7 +22,9 @@ struct NotchRootView: View {
         .frame(width: size.width, height: size.height)
         .clipShape(shape)
         .shadow(
-            color: .black.opacity(mode == .hidden || mode == .compact ? 0 : 0.35), radius: 18, y: 8
+            color: .black.opacity(
+                [.hidden, .compact, .attention, .done].contains(mode) ? 0 : 0.35),
+            radius: 18, y: 8
         )
         // Without a hardware notch the hidden island would be a visible black pill.
         .opacity(mode == .hidden && !model.geometry.hasHardwareNotch ? 0 : 1)

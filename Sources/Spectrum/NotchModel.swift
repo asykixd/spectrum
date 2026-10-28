@@ -175,8 +175,8 @@ final class NotchModel {
 enum NotchLayout {
     static let expandedSize = CGSize(width: 440, height: 128)
     static let agentsSize = CGSize(width: 680, height: 340)
-    /// Each ear is wide enough for an agent's name next to the hardware notch.
-    static let signalEarWidth: CGFloat = 110
+    /// Signals stay quiet: each ear only fits a small status icon next to the hardware notch.
+    static let signalEarWidth: CGFloat = 30
 
     static func size(for mode: NotchMode, geometry: NotchGeometry) -> CGSize {
         let notch = geometry.notch.size

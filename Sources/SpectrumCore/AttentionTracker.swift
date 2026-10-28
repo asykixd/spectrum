@@ -2,9 +2,9 @@ import Foundation
 
 /// Decides when the island should call for the user.
 ///
-/// A Claude Code agent asking for permission or an answer pulses the island until the user
+/// A Claude Code agent asking for permission or an answer blinks the island until the user
 /// opens the panel or the agent moves on. A finished task, or a chat Claude just answered, only
-/// flashes a checkmark for a moment.
+/// shows a checkmark for a few seconds.
 public struct AttentionTracker: Sendable {
     public enum Signal: Equatable, Sendable {
         case needsYou(AgentSession)
@@ -18,7 +18,7 @@ public struct AttentionTracker: Sendable {
     private var acknowledged: Set<String> = []
     private var finished: (session: AgentSession, until: Date)?
 
-    public init(doneDuration: TimeInterval = 1.6) {
+    public init(doneDuration: TimeInterval = 3) {
         self.doneDuration = doneDuration
     }
 

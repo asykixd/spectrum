@@ -56,8 +56,9 @@ desks, talk in the meeting room and doze on the sofa.
 
 ### Signals
 
-The island calls you only when it matters. When an agent needs permission or an answer it pulses
-until you look; when a task finishes it flashes a checkmark for a moment and goes away.
+The island calls you only when it matters, and quietly. When an agent needs permission or an
+answer a small warning icon and a thin outline blink until you look; when a task finishes a small
+checkmark shows for three seconds and goes away.
 
 <img src="docs/screenshots/attention.png" width="470" alt="An agent needs you">
 <img src="docs/screenshots/done.png" width="470" alt="A task finished">
@@ -110,7 +111,7 @@ The gear in the agents panel opens Settings, installs or removes the hooks and q
 | Setting | Default |
 | --- | --- |
 | Show music while it plays | On |
-| Pulse when an agent needs permission or an answer | On |
+| Blink when an agent needs permission or an answer | On |
 | Flash a checkmark when a task finishes | On |
 | Trackpad haptics when the island opens and closes | On |
 | Agents panel shortcut | Double-tap ⌘ |

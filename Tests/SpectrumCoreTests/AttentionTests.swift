@@ -12,13 +12,13 @@ private func session(
         id: id, kind: kind, cwd: nil, activity: activity, startedAt: start, updatedAt: start)
 }
 
-@Test func finishedTaskFlashesBriefly() {
-    var tracker = AttentionTracker(doneDuration: 1.6)
+@Test func finishedTaskShowsForThreeSeconds() {
+    var tracker = AttentionTracker()
     tracker.update([session("a", .thinking)], now: start)
     tracker.update([session("a", .idle)], now: start.addingTimeInterval(10))
 
-    #expect(tracker.signal(at: start.addingTimeInterval(11)) == .done(session("a", .idle)))
-    #expect(tracker.signal(at: start.addingTimeInterval(12)) == nil)
+    #expect(tracker.signal(at: start.addingTimeInterval(12.5)) == .done(session("a", .idle)))
+    #expect(tracker.signal(at: start.addingTimeInterval(13.1)) == nil)
 }
 
 @Test func chatAnswerCountsAsDone() {

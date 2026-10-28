@@ -12,7 +12,7 @@ struct SettingsView: View {
                     "Trackpad haptics when the island opens and closes",
                     isOn: $model.settings.haptics)
                 Toggle(
-                    "Pulse when an agent needs permission or an answer",
+                    "Blink when an agent needs permission or an answer",
                     isOn: $model.settings.alertWhenNeeded)
                 Toggle(
                     "Flash a checkmark when a task finishes", isOn: $model.settings.flashWhenDone)

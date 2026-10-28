@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Quieter island signals: a small warning icon with a thin blinking outline when an agent needs
+  you, and a small checkmark that stays for three seconds instead of 1.6.
+
 ## [1.0.0] - 2026-10-27
 
 First release.

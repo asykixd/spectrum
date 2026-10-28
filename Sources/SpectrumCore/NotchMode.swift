@@ -8,7 +8,7 @@ public enum NotchMode: Hashable, Sendable {
     case expanded
     /// Agents panel opened with a double tap of ⌘.
     case agents
-    /// An agent needs permission or an answer: the island pulses until the user looks.
+    /// An agent needs permission or an answer: the island blinks until the user looks.
     case attention
     /// A task just finished: a checkmark for a moment.
     case done

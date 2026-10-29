@@ -44,3 +44,24 @@ private func run(
 
     #expect(run(taps).filter { $0 }.count == 1)
 }
+
+@Test func ignoresUnhurriedModifierUseFromTyping() {
+    let longHold = run([
+        (.modifierDown, 0), (.modifierUp, 0.28), (.modifierDown, 0.4), (.modifierUp, 0.45),
+    ])
+    let longGap = run([
+        (.modifierDown, 0), (.modifierUp, 0.1), (.modifierDown, 0.45), (.modifierUp, 0.5),
+    ])
+
+    #expect(!longHold.contains(true))
+    #expect(!longGap.contains(true))
+}
+
+@Test func inputBetweenTapsCancels() {
+    let results = run([
+        (.modifierDown, 0), (.modifierUp, 0.1), (.other, 0.15), (.modifierDown, 0.2),
+        (.modifierUp, 0.25),
+    ])
+
+    #expect(!results.contains(true))
+}

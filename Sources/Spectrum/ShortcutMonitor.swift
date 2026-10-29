@@ -13,6 +13,7 @@ final class ShortcutMonitor {
     private let onClick: (CGPoint) -> Void
     private var detector = DoubleTapDetector()
     private var modifierDown = false
+    private var lastInputCount: UInt32 = 0
     private var monitors: [Any] = []
 
     init(
@@ -50,11 +51,16 @@ final class ShortcutMonitor {
     private func handle(_ event: NSEvent) {
         switch event.type {
         case .leftMouseDown, .rightMouseDown:
+            _ = detector.handle(.other, at: event.timestamp)
             onClick(NSEvent.mouseLocation)
         case .keyDown:
             _ = detector.handle(.other, at: event.timestamp)
             if event.keyCode == Self.escapeKeyCode { onEscape() }
         case .flagsChanged:
+            if Self.inputCount() != lastInputCount {
+                lastInputCount = Self.inputCount()
+                _ = detector.handle(.other, at: event.timestamp)
+            }
             let key: NSEvent.ModifierFlags =
                 switch modifier() {
                 case .doubleCommand: .command
@@ -76,6 +82,18 @@ final class ShortcutMonitor {
             if detector.handle(input, at: event.timestamp) { onDoubleTap() }
         default:
             break
+        }
+    }
+
+    /// System-wide count of key presses, clicks and scrolls. The global monitor misses keyDown
+    /// without Accessibility or under Secure Keyboard Entry (Terminal, password fields), and
+    /// never sees scrolls; these counters still tick, so ⌘C ⌘V or ⌘-scroll can't fake a tap.
+    private static func inputCount() -> UInt32 {
+        let types: [CGEventType] = [
+            .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel,
+        ]
+        return types.reduce(0) {
+            $0 &+ CGEventSource.counterForEventType(.combinedSessionState, eventType: $1)
         }
     }
 }

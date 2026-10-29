@@ -19,7 +19,8 @@ public struct DoubleTapDetector: Sendable {
     private var lastTapAt: TimeInterval?
     private var interrupted = false
 
-    public init(maxTapDuration: TimeInterval = 0.3, maxGap: TimeInterval = 0.4) {
+    // Deliberate taps are well under these; looser limits let the tail of ⌘C/⌘V typing through.
+    public init(maxTapDuration: TimeInterval = 0.25, maxGap: TimeInterval = 0.3) {
         self.maxTapDuration = maxTapDuration
         self.maxGap = maxGap
     }

@@ -12,7 +12,7 @@
 - [x] Boss tab: time worked per project, what each did, tokens and money at API prices, the five-hour window
 - [x] Start a new Claude Code session in a project from the panel (opens in Terminal)
 - [x] Session summary: files changed, lines added and removed since the last prompt
-- [ ] Stop the boss, transcript and chat timers while the panel is closed
+- [x] Stop the boss, transcript and chat timers while the panel is closed
 - [ ] Reload the open transcript on hook events or file writes, reading only appended bytes
 - [ ] Stream transcripts in chunks in `UsageScanner` and skip lines without usage before decoding
 - [ ] Persist `UsageScanner` offsets and totals so the boss tab is instant after a relaunch

@@ -12,7 +12,15 @@ final class TranscriptMonitor {
         self.model = model
     }
 
-    func start() {
+    /// Polls only while a conversation is open on screen.
+    func update() {
+        guard model.agentsOpen, model.selectedSessionID != nil else {
+            timer?.invalidate()
+            timer = nil
+            return
+        }
+        refresh()
+        guard timer == nil else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
@@ -20,7 +28,7 @@ final class TranscriptMonitor {
     }
 
     private func refresh() {
-        guard !loading, model.agentsOpen, let session = model.selectedSession,
+        guard !loading, let session = model.selectedSession,
             let path = session.transcriptPath
         else { return }
         loading = true

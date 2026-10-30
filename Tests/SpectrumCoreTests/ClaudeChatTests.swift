@@ -109,3 +109,8 @@ private func snapshot(_ chat: String?, generating: Bool = false) -> ClaudeChatSn
         ChatPollPolicy.interval(
             panelOpen: false, claudeFrontmost: true, onBattery: true, pauseOnBattery: false) == 2)
 }
+
+@Test func chatTimerTicksAtTheReadIntervalAndSlowlyWhilePaused() {
+    #expect(ChatPollPolicy.period(reading: 10) == 10)
+    #expect(ChatPollPolicy.period(reading: nil) == 30)
+}

@@ -8,7 +8,6 @@ final class BossMonitor {
     private var timer: Timer?
     private var scanner = UsageScanner(root: SpectrumPaths.claudeProjects)
     private var scanning = false
-    private var lastScan: Date?
     /// Transcripts can hold hundreds of megabytes; a minute-old total is fresh enough.
     private let interval: TimeInterval = 60
 
@@ -16,24 +15,24 @@ final class BossMonitor {
         self.model = model
     }
 
-    func start() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
-        }
-        timer?.tolerance = 0.5
-    }
-
-    private func tick() {
-        let visible = model.agentsOpen && model.tab == .boss
-        guard visible else {
-            // Next time the tab opens it shows fresh numbers right away.
-            lastScan = nil
+    /// Scans only while the boss tab is on screen; opening it shows fresh numbers right away.
+    func update() {
+        guard model.agentsOpen, model.tab == .boss else {
+            timer?.invalidate()
+            timer = nil
             return
         }
-        guard !scanning, lastScan.map({ Date().timeIntervalSince($0) >= interval }) ?? true
-        else { return }
+        guard timer == nil else { return }
+        scan()
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.scan() }
+        }
+        timer?.tolerance = 10
+    }
+
+    private func scan() {
+        guard !scanning else { return }
         scanning = true
-        lastScan = Date()
         let scanner = self.scanner
         Task {
             let now = Date()

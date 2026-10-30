@@ -47,6 +47,7 @@ final class NotchModel {
             transcript = []
             replyError = nil
             if selectedSessionID != nil { newSessionOpen = false }
+            onPanelChange()
         }
     }
     var transcript: [TranscriptMessage] = []
@@ -63,13 +64,16 @@ final class NotchModel {
         didSet {
             if agentsOpen { attention.acknowledge() }
             updateMode()
+            if agentsOpen != oldValue { onPanelChange() }
         }
     }
     @ObservationIgnored private var attention = AttentionTracker()
     /// What the island is calling the user about, if anything.
     private(set) var signal: AttentionTracker.Signal?
     var isHovering = false { didSet { updateMode() } }
-    var tab: AgentsTab = .sessions
+    var tab: AgentsTab = .sessions {
+        didSet { if tab != oldValue { onPanelChange() } }
+    }
     /// The sessions tab shows the form for starting a new Claude Code session.
     var newSessionOpen = false
     var newSessionDirectory: String?
@@ -94,6 +98,8 @@ final class NotchModel {
     @ObservationIgnored var onPermission: (AgentSession, PermissionDecision) -> Void = { _, _ in }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
     @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
+    /// The panel opened or closed, or switched tab or conversation.
+    @ObservationIgnored var onPanelChange: () -> Void = {}
     /// Fixed time for the office's day/night cycle; only the preview command sets it.
     @ObservationIgnored var clockOverride: Date?
     /// Set by the preview command: `ImageRenderer` can't draw AppKit-backed controls such as

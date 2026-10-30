@@ -13,4 +13,10 @@ public enum ChatPollPolicy {
         if onBattery && pauseOnBattery { return nil }
         return claudeFrontmost ? 2 : 10
     }
+
+    /// Seconds between timer ticks. While reads are paused the timer still ticks now and then,
+    /// so plugging in the charger resumes reading.
+    public static func period(reading interval: TimeInterval?) -> TimeInterval {
+        interval ?? 30
+    }
 }

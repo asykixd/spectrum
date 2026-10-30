@@ -102,9 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let chats = ClaudeChatMonitor(model: model)
         chats.start()
         let transcripts = TranscriptMonitor(model: model)
-        transcripts.start()
         let boss = BossMonitor(model: model)
-        boss.start()
         let launcher = SessionLauncher(model: model)
         model.onStartSession = { [weak launcher] directory, prompt in
             launcher?.start(in: directory, prompt: prompt)
@@ -132,6 +130,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         model.onModeChange = { [weak self] mode in self?.updatePointerTracking(for: mode) }
+        // Panel-only monitors sleep while it is closed instead of ticking to check.
+        model.onPanelChange = { [weak chats, weak transcripts, weak boss] in
+            chats?.tick()
+            transcripts?.update()
+            boss?.update()
+        }
 
         self.panel = panel
         self.model = model

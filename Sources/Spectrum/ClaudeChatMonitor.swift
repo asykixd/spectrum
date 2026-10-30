@@ -116,6 +116,7 @@ final class ClaudeChatMonitor {
     private let reader = ClaudeAppReader()
     private var tracker = ClaudeChatTracker()
     private var timer: Timer?
+    private var observer: NSObjectProtocol?
     private var reading = false
     private var lastRead = Date.distantPast
 
@@ -124,10 +125,34 @@ final class ClaudeChatMonitor {
     }
 
     func start() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }
+        // Claude coming to the front speeds reads up right away rather than at the next tick.
+        observer = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
         }
-        timer?.tolerance = 0.3
+        tick()
+    }
+
+    /// Ticks only as often as the current read interval, so a closed panel costs one wakeup
+    /// every few seconds instead of one a second.
+    func tick() {
+        let frontmost =
+            NSWorkspace.shared.frontmostApplication?.bundleIdentifier == ClaudeAppReader.bundleID
+        let interval = ChatPollPolicy.interval(
+            panelOpen: model.agentsOpen, claudeFrontmost: frontmost,
+            onBattery: Self.onBattery, pauseOnBattery: model.settings.pauseChatsOnBattery)
+        let period = ChatPollPolicy.period(reading: interval)
+        if timer?.timeInterval != period {
+            timer?.invalidate()
+            timer = Timer.scheduledTimer(withTimeInterval: period, repeats: true) {
+                [weak self] _ in
+                MainActor.assumeIsolated { self?.tick() }
+            }
+            timer?.tolerance = period / 5
+        }
+        guard let interval else { return }
+        refresh(every: interval)
     }
 
     private static var onBattery: Bool {
@@ -135,14 +160,10 @@ final class ClaudeChatMonitor {
         return source == kIOPMBatteryPowerKey
     }
 
-    private func refresh() {
-        let frontmost =
-            NSWorkspace.shared.frontmostApplication?.bundleIdentifier == ClaudeAppReader.bundleID
+    private func refresh(every interval: TimeInterval) {
+        // Tolerance can fire the timer slightly early; that still counts as on time.
         guard !reading, model.settings.showClaudeChats,
-            let interval = ChatPollPolicy.interval(
-                panelOpen: model.agentsOpen, claudeFrontmost: frontmost,
-                onBattery: Self.onBattery, pauseOnBattery: model.settings.pauseChatsOnBattery),
-            Date().timeIntervalSince(lastRead) >= interval - 0.1, AXIsProcessTrusted()
+            Date().timeIntervalSince(lastRead) >= interval * 0.8, AXIsProcessTrusted()
         else { return }
         lastRead = Date()
         tracker.retention = TimeInterval(model.settings.chatRetentionMinutes * 60)

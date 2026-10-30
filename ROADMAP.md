@@ -12,16 +12,36 @@
 - [x] Boss tab: time worked per project, what each did, tokens and money at API prices, the five-hour window
 - [x] Start a new Claude Code session in a project from the panel (opens in Terminal)
 - [x] Session summary: files changed, lines added and removed since the last prompt
+- [ ] Stop the boss, transcript and chat timers while the panel is closed
+- [ ] Reload the open transcript on hook events or file writes, reading only appended bytes
+- [ ] Stream transcripts in chunks in `UsageScanner` and skip lines without usage before decoding
+- [ ] Persist `UsageScanner` offsets and totals so the boss tab is instant after a relaunch
 
 ## Next
 - [ ] Codex support
 - [ ] Browsers and other players in now playing (MediaRemote ignores third-party apps since macOS 15.4)
 - [ ] Waveform driven by real audio levels instead of an animation
 - [x] Synced lyrics in the expanded player (LRCLIB)
+- [ ] Poll the pointer slower while it is far from the notch
+- [ ] Poll now playing only while paused; stop when no player is running
+- [ ] Rasterize the static office layer and pause it when nothing moves
+- [ ] Bound the Spotify artists cache; cache artwork and lyrics on disk
+- [ ] Signposts and a `UsageScanner` benchmark to catch performance regressions
+- [ ] "Always allow" in permission requests, written to the project's `permissions.allow`
+- [ ] Keyboard control: Return allows, Escape denies, arrows move through sessions
+- [ ] Pulse again when an agent has waited longer than a set time
+- [ ] Spend limits for the day and the five-hour window, cost per session in the list
+- [ ] Respect Focus and screen sharing: no pulses, no session content
+- [ ] Pill fallback on displays without a notch
+- [ ] Snapshot tests from `preview` renders
+- [ ] Fuzz tests for the transcript, usage, now playing and chat parsers
+- [ ] Test that `Spectrum hook` exits quickly when the app is down or stuck
 
 ## Later
 - [ ] Cursor and GitHub Copilot agents
 - [ ] Reply to Claude app chats from the panel
+- [ ] Auto-update with Sparkle (after notarization)
+- [ ] `Spectrum diag`: socket, hooks, accessibility and recent events
 
 ## Done in 1.0.0
 - [x] Dynamic Island behaviour: invisible when idle, compact live activity, expanded player on hover

@@ -10,8 +10,10 @@ public enum ToolKind: Equatable, Sendable {
     public init(_ toolName: String) {
         switch toolName {
         case "Read", "Grep", "Glob", "LS", "NotebookRead", "TaskList", "TaskGet": self = .reading
-        case "Bash", "BashOutput", "KillShell", "KillBash", "Monitor": self = .terminal
-        case "WebSearch", "WebFetch": self = .browsing
+        case "Bash", "BashOutput", "KillShell", "KillBash", "Monitor", "exec_command",
+            "write_stdin":
+            self = .terminal
+        case "WebSearch", "WebFetch", "web_search": self = .browsing
         case "Task", "Agent": self = .delegating
         // Edits and everything else, MCP tools included, read as typing code.
         default: self = .writing

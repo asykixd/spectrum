@@ -6,7 +6,7 @@ public enum SpectrumPaths {
             .appending(path: "Library/Application Support/Spectrum", directoryHint: .isDirectory)
     }
 
-    /// Unix socket the app listens on for Claude Code hook events.
+    /// Unix socket the app listens on for agent hook events.
     public static var agentSocket: URL {
         supportDirectory.appending(path: "agent.sock")
     }
@@ -15,6 +15,13 @@ public enum SpectrumPaths {
     public static var claudeProjects: URL {
         FileManager.default.homeDirectoryForCurrentUser.appending(
             path: ".claude/projects", directoryHint: .isDirectory)
+    }
+
+    public static var codexHooks: URL {
+        if let home = ProcessInfo.processInfo.environment["CODEX_HOME"], !home.isEmpty {
+            return URL(fileURLWithPath: home, isDirectory: true).appending(path: "hooks.json")
+        }
+        return FileManager.default.homeDirectoryForCurrentUser.appending(path: ".codex/hooks.json")
     }
 
     public static var claudeSettings: URL {

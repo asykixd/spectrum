@@ -53,7 +53,7 @@ struct SettingsView: View {
                 }
                 .disabled(!model.settings.showClaudeChats)
                 Picker(
-                    "Drop silent Claude Code sessions after",
+                    "Drop silent coding sessions after",
                     selection: $model.settings.staleAgentMinutes
                 ) {
                     ForEach([15, 30, 60, 180], id: \.self) { minutes in
@@ -61,17 +61,25 @@ struct SettingsView: View {
                     }
                 }
             }
-            Section("Claude Code") {
-                LabeledContent("Hooks") {
-                    HStack {
-                        Text(model.hooksInstalled ? "Installed" : "Not installed")
-                            .foregroundStyle(.secondary)
-                        if model.hooksInstalled {
-                            Button("Remove", action: model.onRemoveHooks)
-                        } else {
-                            Button("Install", action: model.onInstallHooks)
+            Section("Agent Hooks") {
+                ForEach(AgentProvider.allCases, id: \.self) { provider in
+                    LabeledContent(provider.name) {
+                        HStack {
+                            let installed = model.installedHooks.contains(provider)
+                            Text(installed ? "Installed" : "Not installed")
+                                .foregroundStyle(.secondary)
+                            if installed {
+                                Button("Remove") { model.onRemoveHooks(provider) }
+                            } else {
+                                Button("Install") { model.onInstallHooks(provider) }
+                            }
                         }
                     }
+                }
+                if model.installedHooks.contains(.codex) {
+                    Text("Trust Spectrum’s hooks in Codex Settings → Hooks or /hooks in the CLI.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             Section {

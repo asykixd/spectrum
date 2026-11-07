@@ -1,9 +1,9 @@
 import Foundation
 
-/// One conversation with Claude: a Claude Code session or a chat in the Claude app.
+/// One coding agent session or a chat in the Claude app.
 public struct AgentSession: Identifiable, Equatable, Sendable {
     public enum Kind: Equatable, Sendable {
-        /// Claude Code, tracked through hook events.
+        /// A coding agent, tracked through hook events.
         case code
         /// A chat in the Claude desktop app, tracked through its accessibility tree.
         case chat
@@ -11,9 +11,10 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
 
     public let id: String
     public var kind: Kind
+    public let provider: AgentProvider
     public var title: String?
     public var cwd: String?
-    /// Claude Code's JSONL transcript, for showing the conversation.
+    /// The agent's JSONL transcript, for showing the conversation.
     public var transcriptPath: String?
     public var activity: AgentActivity
     /// A permission request the island can answer, while the hook still waits for it.
@@ -29,10 +30,12 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
 
     public init(
         id: String, kind: Kind = .code, title: String? = nil, cwd: String?,
-        transcriptPath: String? = nil, activity: AgentActivity, startedAt: Date, updatedAt: Date
+        transcriptPath: String? = nil, provider: AgentProvider = .claude, activity: AgentActivity,
+        startedAt: Date, updatedAt: Date
     ) {
         self.id = id
         self.kind = kind
+        self.provider = provider
         self.title = title
         self.cwd = cwd
         self.transcriptPath = transcriptPath
@@ -67,13 +70,13 @@ public struct SessionStore: Equatable, Sendable {
 
     public mutating func apply(_ event: AgentEvent, at date: Date) {
         if event.kind == .sessionEnd {
-            sessions[event.sessionID] = nil
+            sessions[event.sessionKey] = nil
             return
         }
         var session =
-            sessions[event.sessionID]
+            sessions[event.sessionKey]
             ?? AgentSession(
-                id: event.sessionID, cwd: event.cwd, activity: .idle,
+                id: event.sessionKey, cwd: event.cwd, provider: event.provider, activity: .idle,
                 startedAt: date, updatedAt: date)
         session.activity = session.activity.applying(event)
         // Any later event means the request was settled, by the island or in the terminal.
@@ -85,7 +88,7 @@ public struct SessionStore: Equatable, Sendable {
         session.cwd = event.cwd ?? session.cwd
         session.transcriptPath = event.transcriptPath ?? session.transcriptPath
         session.updatedAt = date
-        sessions[event.sessionID] = session
+        sessions[event.sessionKey] = session
     }
 
     private static func subagents(_ count: Int, after event: AgentEvent) -> Int {
@@ -94,7 +97,7 @@ public struct SessionStore: Equatable, Sendable {
         case .preToolUse where delegating: return count + 1
         case .postToolUse where delegating: return max(count - 1, 0)
         // A turn's boundaries reset the count, so a lost finish can't leave a ghost intern.
-        case .stop, .userPromptSubmit, .sessionStart: return 0
+        case .stop, .interrupt, .userPromptSubmit, .sessionStart: return 0
         default: return count
         }
     }

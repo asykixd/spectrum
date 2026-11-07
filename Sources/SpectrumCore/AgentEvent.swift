@@ -1,8 +1,6 @@
 import Foundation
 
-/// A lifecycle event emitted by a Claude Code hook.
-///
-/// Field names mirror the JSON payload Claude Code writes to a hook's stdin.
+/// A lifecycle event emitted by a coding agent's hook.
 public struct AgentEvent: Decodable, Equatable, Sendable {
     public enum Kind: String, Decodable, Sendable {
         case sessionStart = "SessionStart"
@@ -12,11 +10,14 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         case notification = "Notification"
         case permissionRequest = "PermissionRequest"
         case stop = "Stop"
+        case interrupt = "Interrupt"
         case subagentStop = "SubagentStop"
         case sessionEnd = "SessionEnd"
     }
 
+    public let provider: AgentProvider
     public let sessionID: String
+    public var sessionKey: String { provider == .codex ? "codex:\(sessionID)" : sessionID }
     public let kind: Kind
     public let cwd: String?
     public let toolName: String?
@@ -31,6 +32,7 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     public let fileChange: FileChange?
 
     enum CodingKeys: String, CodingKey {
+        case provider = "spectrum_provider"
         case sessionID = "session_id"
         case kind = "hook_event_name"
         case cwd
@@ -43,6 +45,7 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        provider = try container.decodeIfPresent(AgentProvider.self, forKey: .provider) ?? .claude
         sessionID = try container.decode(String.self, forKey: .sessionID)
         kind = try container.decode(Kind.self, forKey: .kind)
         cwd = try container.decodeIfPresent(String.self, forKey: .cwd)
@@ -70,9 +73,19 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     /// What a `PermissionRequest` asks to do, in a form short enough for the island.
     public var permissionPrompt: PermissionPrompt? {
         guard kind == .permissionRequest else { return nil }
-        let fields = ["command", "file_path", "url", "pattern", "path", "query"]
+        let fields = ["command", "file_path", "url", "pattern", "path", "query", "description"]
         let detail = fields.lazy.compactMap { self.toolInput?[$0]?.value }.first
         return PermissionPrompt(tool: toolName ?? "tool", detail: detail)
+    }
+
+    /// Marks the provider at the socket boundary, since the two hook schemas overlap.
+    public static func forwardedPayload(_ data: Data, from provider: AgentProvider) throws -> Data {
+        guard provider == .codex else { return data }
+        guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return data
+        }
+        object[CodingKeys.provider.rawValue] = provider.rawValue
+        return try JSONSerialization.data(withJSONObject: object)
     }
 
     public static func decode(_ data: Data) throws -> AgentEvent {

@@ -83,13 +83,13 @@ final class NotchModel {
     var recentProjects: [String] = []
     /// Today's work and spend, filled in while the boss tab is open.
     var bossReport: BossReport?
-    var hooksInstalled = false
+    var installedHooks: Set<AgentProvider> = []
 
     private(set) var mode: NotchMode = .hidden
 
     @ObservationIgnored var onCommand: (MediaCommand) -> Void = { _ in }
-    @ObservationIgnored var onInstallHooks: () -> Void = {}
-    @ObservationIgnored var onRemoveHooks: () -> Void = {}
+    @ObservationIgnored var onInstallHooks: (AgentProvider) -> Void = { _ in }
+    @ObservationIgnored var onRemoveHooks: (AgentProvider) -> Void = { _ in }
     @ObservationIgnored var onOpenSettings: () -> Void = {}
     @ObservationIgnored var onOpenChat: (AgentSession) -> Void = { _ in }
     @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }

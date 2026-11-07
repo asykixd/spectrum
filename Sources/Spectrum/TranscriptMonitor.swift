@@ -37,7 +37,8 @@ final class TranscriptMonitor {
             defer { loading = false }
             let messages = await Task.detached(priority: .utility) {
                 do {
-                    return try Transcript.load(from: URL(fileURLWithPath: path))
+                    return try Transcript.load(
+                        from: URL(fileURLWithPath: path), provider: session.provider)
                 } catch {
                     log.error("reading transcript failed: \(error)")
                     return []

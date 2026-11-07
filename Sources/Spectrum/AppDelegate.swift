@@ -24,6 +24,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var scrollMonitor: Any?
     private var swipe = SwipeDetector()
 
+    private func configureHooks(for model: NotchModel) {
+        let path = Bundle.main.executableURL?.resolvingSymlinksInPath().path
+        for provider in AgentProvider.allCases {
+            let url = provider.hooksURL
+            if HookInstaller.isInstalled(settingsURL: url) {
+                model.installedHooks.insert(provider)
+            }
+            if let path,
+                HookInstaller.needsUpdate(
+                    settingsURL: url, executablePath: path, provider: provider)
+            {
+                do {
+                    try HookInstaller.install(
+                        executablePath: path, settingsURL: url, provider: provider)
+                } catch {
+                    log.error("updating \(provider.name) hooks failed: \(error)")
+                }
+            }
+        }
+        model.onInstallHooks = { [weak model] provider in
+            guard let path else { return }
+            do {
+                try HookInstaller.install(
+                    executablePath: path, settingsURL: provider.hooksURL, provider: provider)
+                model?.installedHooks.insert(provider)
+            } catch {
+                log.error("installing \(provider.name) hooks failed: \(error)")
+                NSAlert(error: error).runModal()
+            }
+        }
+        model.onRemoveHooks = { [weak model] provider in
+            do {
+                try HookInstaller.uninstall(settingsURL: provider.hooksURL)
+                model?.installedHooks.remove(provider)
+            } catch {
+                log.error("removing \(provider.name) hooks failed: \(error)")
+                NSAlert(error: error).runModal()
+            }
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main
         guard let screen else {
@@ -36,39 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             topRightArea: screen.auxiliaryTopRightArea
         )
         let model = NotchModel(geometry: geometry, settings: .load(from: .standard))
-        model.hooksInstalled = HookInstaller.isInstalled(settingsURL: SpectrumPaths.claudeSettings)
-        if let path = Bundle.main.executableURL?.resolvingSymlinksInPath().path,
-            HookInstaller.needsUpdate(
-                settingsURL: SpectrumPaths.claudeSettings, executablePath: path)
-        {
-            // Hooks from another copy of Spectrum or an older version; bring them up to date.
-            do {
-                try HookInstaller.install(
-                    executablePath: path, settingsURL: SpectrumPaths.claudeSettings)
-            } catch {
-                log.error("updating hook path failed: \(error)")
-            }
-        }
-        model.onInstallHooks = { [weak model] in
-            guard let path = Bundle.main.executableURL?.resolvingSymlinksInPath().path else {
-                return
-            }
-            do {
-                try HookInstaller.install(
-                    executablePath: path, settingsURL: SpectrumPaths.claudeSettings)
-                model?.hooksInstalled = true
-            } catch {
-                log.error("hook install failed: \(error)")
-            }
-        }
-        model.onRemoveHooks = { [weak model] in
-            do {
-                try HookInstaller.uninstall(settingsURL: SpectrumPaths.claudeSettings)
-                model?.hooksInstalled = false
-            } catch {
-                log.error("hook removal failed: \(error)")
-            }
-        }
+        configureHooks(for: model)
         model.onOpenSettings = { [weak self] in self?.showSettings() }
         model.onOpenChat = { _ in
             NSRunningApplication.runningApplications(

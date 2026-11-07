@@ -10,7 +10,7 @@ public enum AgentReply {
 
     /// Replying while the agent works would run two turns on one session at once.
     public static func canReply(to session: AgentSession) -> Bool {
-        session.kind == .code && !session.activity.isWorking
+        session.kind == .code && session.provider == .claude && !session.activity.isWorking
     }
 
     public static func arguments(sessionID: String, prompt: String) -> [String] {

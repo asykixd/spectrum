@@ -58,7 +58,7 @@ enum PreviewRenderer {
         for scene in scenes {
             let model = NotchModel(geometry: geometry)
             model.renderingStill = true
-            model.hooksInstalled = true
+            model.installedHooks = [.claude]
             model.tab = scene.tab
             model.clockOverride = Calendar.current.date(
                 bySettingHour: scene.hour, minute: 10, second: 0, of: Date())

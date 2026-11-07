@@ -1,7 +1,7 @@
 import Foundation
 import SpectrumCore
 
-/// Receives Claude Code hook events and keeps the model's session list current.
+/// Receives coding agent hook events and keeps the model's session list current.
 @MainActor
 final class AgentMonitor {
     private let model: NotchModel
@@ -61,13 +61,13 @@ final class AgentMonitor {
             return reply.send(nil)
         }
         // Whatever the session does next, an older request of it can no longer be answered.
-        pendingPermissions.removeValue(forKey: event.sessionID)?.send(nil)
+        pendingPermissions.removeValue(forKey: event.sessionKey)?.send(nil)
         store.apply(event, at: Date())
         if event.kind == .permissionRequest && model.settings.answerPermissions {
-            wait(for: event.sessionID, reply: reply)
+            wait(for: event.sessionKey, reply: reply)
         } else {
             reply.send(nil)
-            store.expirePermission(sessionID: event.sessionID)
+            store.expirePermission(sessionID: event.sessionKey)
         }
         publish()
     }

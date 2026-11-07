@@ -149,10 +149,12 @@ private struct PanelMenu: View {
         Menu {
             Button("Settings…", action: model.onOpenSettings)
             Divider()
-            if model.hooksInstalled {
-                Button("Remove Claude Code Hooks", action: model.onRemoveHooks)
-            } else {
-                Button("Install Claude Code Hooks", action: model.onInstallHooks)
+            ForEach(AgentProvider.allCases, id: \.self) { provider in
+                if model.installedHooks.contains(provider) {
+                    Button("Remove \(provider.name) Hooks") { model.onRemoveHooks(provider) }
+                } else {
+                    Button("Install \(provider.name) Hooks") { model.onInstallHooks(provider) }
+                }
             }
             Divider()
             Button("Quit Spectrum") { NSApp.terminate(nil) }
@@ -184,7 +186,11 @@ struct SessionsListView: View {
 
     private var sections: some View {
         VStack(alignment: .leading, spacing: 10) {
-            section("Claude Code", symbol: "terminal", sessions: groups.code)
+            ForEach(AgentProvider.allCases, id: \.self) { provider in
+                section(
+                    provider.name, symbol: "terminal",
+                    sessions: groups.code.filter { $0.provider == provider })
+            }
             section("Chats", symbol: "bubble.left.and.bubble.right", sessions: groups.chats)
             section("AFK", symbol: "moon.zzz", sessions: groups.afk)
         }
@@ -217,6 +223,16 @@ struct SessionsListView: View {
         }
     }
 
+    private var emptyStateHint: String {
+        if model.installedHooks.contains(.codex) {
+            return "Trust Spectrum’s hooks in Codex, then start a session."
+        }
+        if model.installedHooks.contains(.claude) {
+            return "Start a Claude Code session or a chat in the Claude app."
+        }
+        return "Install hooks to see sessions from Claude Code or Codex."
+    }
+
     private var emptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "sparkles")
@@ -225,23 +241,25 @@ struct SessionsListView: View {
             Text("No agents running")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white)
-            if model.hooksInstalled {
-                Text("Start a Claude Code session or a chat in the Claude app.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.55))
-            } else {
-                Text("Spectrum listens to Claude Code through hooks.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.55))
-                Button(action: model.onInstallHooks) {
-                    Text("Install Claude Code hooks")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(.white))
+            Text(emptyStateHint)
+                .font(.system(size: 12))
+                .foregroundStyle(.white.opacity(0.55))
+            HStack {
+                ForEach(AgentProvider.allCases, id: \.self) { provider in
+                    if !model.installedHooks.contains(provider) {
+                        Button {
+                            model.onInstallHooks(provider)
+                        } label: {
+                            Text("Install \(provider.name) hooks")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(Capsule().fill(.white))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -273,6 +291,11 @@ private struct SessionRow: View {
                     Text(session.statusText)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(isWaiting ? Color(hex: 0xF5B544) : .white.opacity(0.6))
+                    if session.provider == .codex {
+                        Text(session.provider.name)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
                     if !session.tasks.isEmpty {
                         Text(taskSummary)
                             .font(.system(size: 11))

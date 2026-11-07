@@ -4,7 +4,7 @@
 
 # Spectrum
 
-**Dynamic Island for the Mac notch: now-playing music and a live pixel office of your Claude agents.**
+**Dynamic Island for the Mac notch: now-playing music and a live pixel office of your Claude and Codex agents.**
 
 [![Release](https://img.shields.io/github/v/release/asykixd/spectrum?style=flat-square)](https://github.com/asykixd/spectrum/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/asykixd/spectrum/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/asykixd/spectrum/actions/workflows/ci.yml)
@@ -18,8 +18,8 @@
 
 Spectrum is a native macOS app, written in Swift and SwiftUI, that turns the MacBook notch into
 an iPhone-style Dynamic Island. When nothing is happening it is invisible. When music plays, the
-notch grows a live activity. Double-tap <kbd>⌘</kbd> and it opens your agents: every Claude Code
-session and Claude app chat, as a list or as a pixel-art office where Clawd mascots work at their
+notch grows a live activity. Double-tap <kbd>⌘</kbd> and it opens your agents: local Claude Code and Codex
+sessions and Claude app chats, as a list or as a pixel-art office where Clawd mascots work at their
 desks, talk in the meeting room and doze on the sofa.
 
 ## Features
@@ -41,14 +41,14 @@ desks, talk in the meeting room and doze on the sofa.
 
 - Double-tap <kbd>⌘</kbd> (or <kbd>⌥</kbd> / <kbd>⌃</kbd>) for the agents panel; move the pointer
   away, press <kbd>Esc</kbd> or click outside to close it.
-- **Sessions**: Claude Code agents, Claude app chats and AFK agents in separate groups, with what
+- **Sessions**: Claude Code agents, Codex agents, Claude app chats and AFK agents in separate groups, with what
   each one is doing right now. A ring around the avatar shows how much of its plan is done, and
   "2 files +22 −33" what it changed since your last prompt.
   Hover a row and press ✕ to hide it until it does something new.
 - **New session**: the ＋ button in the panel picks one of your recent Claude Code folders (or any
   other) and an optional first prompt, and opens the session in Terminal.
-- **Conversation**: click a Claude Code session to read its recent messages and tool calls, and
-  reply to it when it is idle.
+- **Conversation**: click a Claude Code or Codex session to read its recent messages and tool
+  calls. You can reply to an idle Claude Code session from the panel.
 - **Office**: desks for working agents with screens showing their activity (a page while reading,
   a terminal, a browser, code) and subagents as small interns on the desk, a meeting room where
   you and Claude talk through a chat, a lounge for idle agents. Hover to highlight, click to open.
@@ -94,7 +94,9 @@ answer within a minute, Claude Code shows its usual dialog in the terminal.
    ```
 
 4. Open Spectrum. It has no Dock icon; double-tap <kbd>⌘</kbd> to see it.
-5. In the panel, click the gear → **Install Claude Code Hooks**.
+5. In the panel, click the gear and install hooks for **Claude Code** or **Codex**.
+6. For Codex, review and trust Spectrum’s hooks in **Settings → Hooks** in the desktop app or with
+   `/hooks` in the CLI. Start or reopen a local session to see it in Spectrum.
 
 Requires macOS 14 or later, on Apple silicon or Intel.
 
@@ -147,6 +149,7 @@ The gear in the agents panel opens Settings, installs or removes the hooks and q
 ```mermaid
 flowchart LR
     CC[Claude Code] -- hook JSON --> Hook[Spectrum hook]
+    Codex[Codex] -- hook JSON --> Hook
     Hook -- unix socket --> Agents[AgentMonitor]
     Players[Spotify / Music] -- AppleScript --> Music[NowPlayingMonitor]
     App[Claude app] -- Accessibility --> Chats[ClaudeChatMonitor]
@@ -162,6 +165,10 @@ flowchart LR
   so it never slows an agent down. Only a permission request waits, up to a minute, for an
   answer from the island, and prints the decision for Claude Code. Your own hooks are kept, and a backup of the file is saved the
   first time.
+- **Codex** reports local CLI and desktop sessions through hooks in `~/.codex/hooks.json` (or
+  `$CODEX_HOME/hooks.json`). Spectrum uses the same socket and permission flow and reads recent
+  messages and tool calls from the session’s local transcript. See the
+  [Codex hooks documentation](https://learn.chatgpt.com/docs/hooks) for trust review.
 - **Replies** run `claude -p --resume <session>` in the background: the answer appears in
   Spectrum, not in the session's open terminal.
 - **Music**: MediaRemote no longer answers third-party apps since macOS 15.4, so Spectrum asks
@@ -188,8 +195,8 @@ The app binary doubles as a small CLI:
 
 | Command | Description |
 | --- | --- |
-| `Spectrum install-hooks` | Add Spectrum's hooks to `~/.claude/settings.json` |
-| `Spectrum uninstall-hooks` | Remove only Spectrum's hooks |
+| `Spectrum install-hooks [claude\|codex]` | Add Spectrum's hooks for the selected agent (default: Claude Code) |
+| `Spectrum uninstall-hooks [claude\|codex]` | Remove only Spectrum's hooks |
 | `Spectrum hook` | Called by the hooks; forwards the event on stdin to the app |
 | `Spectrum preview <dir>` | Render every state with demo data to PNG files (the screenshots above) |
 

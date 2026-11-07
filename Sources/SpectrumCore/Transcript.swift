@@ -20,7 +20,7 @@ public struct TranscriptMessage: Identifiable, Equatable, Sendable {
     }
 }
 
-/// Reads Claude Code's JSONL transcripts.
+/// Reads the supported coding agents' JSONL transcripts.
 public enum Transcript {
     /// Tail of the file that is read; transcripts grow to many megabytes.
     static let tailBytes = 512 * 1024
@@ -68,8 +68,28 @@ public enum Transcript {
         }
     }
 
+    private struct CodexLine: Decodable {
+        let type: String
+        let payload: Item
+
+        struct Item: Decodable {
+            let type: String
+            let role: String?
+            let content: [TextBlock]?
+            let name: String?
+            let arguments: String?
+
+            struct TextBlock: Decodable {
+                let type: String
+                let text: String?
+            }
+        }
+    }
+
     /// The last `limit` messages of the transcript at `url`.
-    public static func load(from url: URL, limit: Int = 40) throws -> [TranscriptMessage] {
+    public static func load(
+        from url: URL, limit: Int = 40, provider: AgentProvider = .claude
+    ) throws -> [TranscriptMessage] {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         let size = try handle.seekToEnd()
@@ -80,10 +100,13 @@ public enum Transcript {
             // The first line was cut in the middle.
             text = String(text[text.index(after: newline)...])
         }
-        return Array(parse(text).suffix(limit))
+        return Array(parse(text, provider: provider).suffix(limit))
     }
 
-    public static func parse(_ jsonl: String) -> [TranscriptMessage] {
+    public static func parse(
+        _ jsonl: String, provider: AgentProvider = .claude
+    ) -> [TranscriptMessage] {
+        if provider == .codex { return parseCodex(jsonl) }
         let decoder = JSONDecoder()
         var messages: [TranscriptMessage] = []
         for (index, raw) in jsonl.split(separator: "\n").enumerated() {
@@ -115,6 +138,42 @@ public enum Transcript {
             }
         }
         return messages
+    }
+
+    private static func parseCodex(_ jsonl: String) -> [TranscriptMessage] {
+        let decoder = JSONDecoder()
+        return jsonl.split(separator: "\n").enumerated().compactMap { index, raw in
+            guard let line = try? decoder.decode(CodexLine.self, from: Data(raw.utf8)),
+                line.type == "response_item"
+            else { return nil }
+            let item = line.payload
+            let id = "line-\(index)"
+            switch item.type {
+            case "message":
+                let role: TranscriptMessage.Role
+                let blockType: String
+                switch item.role {
+                case "user": (role, blockType) = (.user, "input_text")
+                case "assistant": (role, blockType) = (.assistant, "output_text")
+                default: return nil
+                }
+                let text = (item.content ?? []).filter { $0.type == blockType }
+                    .compactMap(\.text).joined(separator: "\n")
+                guard !text.isEmpty else { return nil }
+                if role == .user, !isUserText(text) || text.hasPrefix("# AGENTS.md instructions") {
+                    return nil
+                }
+                return .init(id: id, role: role, text: text)
+            case "function_call", "custom_tool_call":
+                guard let name = item.name else { return nil }
+                let input = item.arguments.flatMap {
+                    try? decoder.decode([String: JSONValue].self, from: Data($0.utf8))
+                }
+                return .init(id: id, role: .tool, text: toolSummary(name, input))
+            default:
+                return nil
+            }
+        }
     }
 
     /// Skips the system-injected user turns: slash-command wrappers, reminders, hook output.

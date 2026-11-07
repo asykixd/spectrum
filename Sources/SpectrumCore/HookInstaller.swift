@@ -1,10 +1,10 @@
 import Foundation
 
-/// Adds and removes Spectrum's entries in Claude Code's `settings.json` without touching
-/// anything else the user has configured there.
+/// Adds and removes Spectrum's entries in an agent's JSON hook configuration.
 public enum HookInstaller {
     public enum InstallError: Error, Equatable {
         case settingsNotAnObject
+        case invalidHooks
     }
 
     /// Trailing shell comment that identifies Spectrum's hook commands.
@@ -15,23 +15,43 @@ public enum HookInstaller {
         .permissionRequest, .stop, .subagentStop, .sessionEnd,
     ]
 
-    /// How long a permission hook waits for the island before Claude Code shows its own dialog.
-    public static let permissionWait = 60
+    private static let codexEvents: [AgentEvent.Kind] = [
+        .sessionStart, .userPromptSubmit, .preToolUse, .postToolUse, .permissionRequest,
+        .stop, .interrupt, .sessionEnd,
+    ]
 
-    public static func command(executablePath: String) -> String {
-        let quoted = "'" + executablePath.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
-        return "\(quoted) hook \(marker)"
+    private static func events(for provider: AgentProvider) -> [AgentEvent.Kind] {
+        provider == .codex ? codexEvents : events
     }
 
-    public static func installing(into settings: [String: Any], command: String) -> [String: Any] {
+    /// How long a permission hook waits for the island before the agent shows its own dialog.
+    public static let permissionWait = 60
+
+    public static func command(executablePath: String, provider: AgentProvider = .claude) -> String
+    {
+        let quoted = "'" + executablePath.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
+        let arguments = provider == .codex ? "hook codex" : "hook"
+        return "\(quoted) \(arguments) \(marker)"
+    }
+
+    public static func installing(
+        into settings: [String: Any], command: String, provider: AgentProvider = .claude
+    ) -> [String: Any] {
         var result = removing(from: settings)
         var hooks = result["hooks"] as? [String: Any] ?? [:]
-        for event in events {
-            let timeout = event == .permissionRequest ? permissionWait + 15 : 5
+        for event in events(for: provider) {
+            let timeout: Int
+            switch event {
+            case .permissionRequest: timeout = permissionWait + 15
+            case .interrupt where provider == .codex, .sessionEnd where provider == .codex:
+                timeout = 3
+            default: timeout = 5
+            }
             var group: [String: Any] = [
                 "hooks": [["type": "command", "command": command, "timeout": timeout]]
             ]
-            if [.preToolUse, .postToolUse, .permissionRequest].contains(event) {
+            if provider == .claude, [.preToolUse, .postToolUse, .permissionRequest].contains(event)
+            {
                 group["matcher"] = "*"
             }
             var groups = hooks[event.rawValue] as? [Any] ?? []
@@ -50,6 +70,7 @@ public enum HookInstaller {
                 guard var dict = group as? [String: Any], let entries = dict["hooks"] as? [Any]
                 else { return group }
                 let remaining = entries.filter { !isSpectrumEntry($0) }
+                if remaining.count == entries.count { return group }
                 if remaining.isEmpty { return nil }
                 dict["hooks"] = remaining
                 return dict
@@ -62,8 +83,14 @@ public enum HookInstaller {
     }
 
     /// Installs hooks into the settings file, keeping a one-time backup of the original.
-    public static func install(executablePath: String, settingsURL: URL) throws {
+    public static func install(
+        executablePath: String, settingsURL: URL, provider: AgentProvider = .claude
+    ) throws {
         let settings = try readSettings(at: settingsURL)
+        if let hooks = settings["hooks"] {
+            guard hooks is [String: [[String: Any]]]
+            else { throw InstallError.invalidHooks }
+        }
         let backup = settingsURL.appendingPathExtension("spectrum-backup")
         let fileManager = FileManager.default
         if fileManager.fileExists(atPath: settingsURL.path),
@@ -71,39 +98,51 @@ public enum HookInstaller {
         {
             try fileManager.copyItem(at: settingsURL, to: backup)
         }
-        let updated = installing(into: settings, command: command(executablePath: executablePath))
+        let updated = installing(
+            into: settings, command: command(executablePath: executablePath, provider: provider),
+            provider: provider)
         try writeSettings(updated, to: settingsURL)
     }
 
     public static func uninstall(settingsURL: URL) throws {
         let settings = try readSettings(at: settingsURL)
+        guard hasSpectrumHooks(in: settings) else { return }
         try writeSettings(removing(from: settings), to: settingsURL)
     }
 
     /// True when Spectrum's hooks exist but don't match what this copy would install: they call
     /// a different executable (a development build vs. the installed app) or miss an event a
     /// newer version listens to.
-    public static func needsUpdate(settingsURL: URL, executablePath: String) -> Bool {
-        guard let data = try? Data(contentsOf: settingsURL) else { return false }
-        guard String(decoding: data, as: UTF8.self).contains(marker) else { return false }
-        // JSON escapes the quotes and slashes differently, so compare through a decode.
-        guard let settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let hooks = settings["hooks"] as? [String: Any]
+    public static func needsUpdate(
+        settingsURL: URL, executablePath: String, provider: AgentProvider = .claude
+    ) -> Bool {
+        guard let settings = try? readSettings(at: settingsURL),
+            let hooks = settings["hooks"] as? [String: [[String: Any]]]
         else { return false }
-        let expected = command(executablePath: executablePath)
-        func commands(_ value: Any?) -> [String] {
-            ((value as? [[String: Any]]) ?? [])
+        let expected = command(executablePath: executablePath, provider: provider)
+        func commands(_ groups: [[String: Any]]) -> [String] {
+            groups
                 .compactMap { $0["hooks"] as? [[String: Any]] }.joined()
                 .compactMap { $0["command"] as? String }
                 .filter { $0.hasSuffix(marker) }
         }
-        if hooks.values.flatMap(commands).contains(where: { $0 != expected }) { return true }
-        return events.contains { commands(hooks[$0.rawValue]).isEmpty }
+        let installed = hooks.mapValues(commands)
+        let allCommands = installed.values.joined()
+        guard !allCommands.isEmpty else { return false }
+        return allCommands.contains { $0 != expected }
+            || events(for: provider).contains { installed[$0.rawValue]?.count != 1 }
     }
 
     public static func isInstalled(settingsURL: URL) -> Bool {
-        guard let data = try? Data(contentsOf: settingsURL) else { return false }
-        return String(decoding: data, as: UTF8.self).contains(marker)
+        guard let settings = try? readSettings(at: settingsURL) else { return false }
+        return hasSpectrumHooks(in: settings)
+    }
+
+    private static func hasSpectrumHooks(in settings: [String: Any]) -> Bool {
+        guard let hooks = settings["hooks"] as? [String: [[String: Any]]] else { return false }
+        return hooks.values.joined().contains { group in
+            (group["hooks"] as? [Any])?.contains(where: isSpectrumEntry) == true
+        }
     }
 
     private static func isSpectrumEntry(_ entry: Any) -> Bool {

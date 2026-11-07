@@ -11,7 +11,7 @@ public enum AgentActivity: Equatable, Sendable {
     /// Folds the next hook event into the current activity.
     public func applying(_ event: AgentEvent) -> AgentActivity {
         switch event.kind {
-        case .sessionStart, .stop:
+        case .sessionStart, .stop, .interrupt:
             return .idle
         case .postToolUse, .userPromptSubmit, .subagentStop:
             return .thinking

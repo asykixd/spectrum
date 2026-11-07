@@ -1,6 +1,6 @@
 import Foundation
 
-/// A Claude Code permission request, reduced to what fits on the island.
+/// An agent permission request, reduced to what fits on the island.
 public struct PermissionPrompt: Equatable, Sendable {
     public var tool: String
     /// The command, file or URL the tool would touch, when the input names one.
@@ -17,7 +17,7 @@ public enum PermissionDecision: Sendable {
     case allow
     case deny
 
-    /// JSON for the hook's stdout, in the shape Claude Code reads a decision from.
+    /// JSON for the hook's stdout, in the shape the agent reads a decision from.
     public var hookOutput: Data {
         var decision: [String: Any] = [:]
         switch self {

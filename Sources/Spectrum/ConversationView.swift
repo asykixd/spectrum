@@ -1,7 +1,7 @@
 import SpectrumCore
 import SwiftUI
 
-/// The recent conversation of one Claude Code session, read from its transcript.
+/// The recent conversation of one coding agent session, read from its transcript.
 struct ConversationView: View {
     @Bindable var model: NotchModel
     let session: AgentSession
@@ -62,7 +62,7 @@ struct ConversationView: View {
                 }
             }
 
-            if model.settings.replyFromPanel {
+            if model.settings.replyFromPanel, session.provider == .claude {
                 replyBar
             }
         }

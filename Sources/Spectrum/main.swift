@@ -13,15 +13,25 @@ private func fail(_ message: String) -> Never {
 
 let arguments = CommandLine.arguments.dropFirst()
 
+private func hookProvider() -> AgentProvider {
+    guard let name = arguments.dropFirst().first else { return .claude }
+    guard let provider = AgentProvider(rawValue: name), arguments.count == 2 else {
+        fail("expected provider claude or codex")
+    }
+    return provider
+}
+
 switch arguments.first {
 case "hook":
-    // Runs inside every Claude Code hook: must stay silent on stdout (UserPromptSubmit output
-    // is fed to the model) and must never fail the agent, even when the app isn't running.
-    // The one exception is a permission request the user answered on the island: its decision
-    // goes to stdout, and with no answer Claude Code shows its own dialog as usual.
-    let payload = FileHandle.standardInput.readDataToEndOfFile()
+    // A hook must be silent and successful even when the app isn't running. Only an explicit
+    // permission decision goes to stdout; an empty answer lets the agent show its own prompt.
+    let input = FileHandle.standardInput.readDataToEndOfFile()
+    let provider = arguments.dropFirst().first.flatMap(AgentProvider.init(rawValue:)) ?? .claude
+    guard let payload = try? AgentEvent.forwardedPayload(input, from: provider),
+        let event = try? AgentEvent.decode(payload)
+    else { exit(0) }
     let path = SpectrumPaths.agentSocket.path
-    if (try? AgentEvent.decode(payload))?.kind == .permissionRequest {
+    if event.kind == .permissionRequest {
         let wait = TimeInterval(HookInstaller.permissionWait)
         if let answer = try? AgentSocket.request(payload, to: path, timeout: wait),
             !answer.isEmpty
@@ -35,17 +45,20 @@ case "hook":
 
 case "install-hooks":
     guard let path = executablePath() else { fail("cannot resolve executable path") }
+    let provider = hookProvider()
     do {
-        try HookInstaller.install(executablePath: path, settingsURL: SpectrumPaths.claudeSettings)
-        print("Installed Claude Code hooks in \(SpectrumPaths.claudeSettings.path)")
+        try HookInstaller.install(
+            executablePath: path, settingsURL: provider.hooksURL, provider: provider)
+        print("Installed \(provider.name) hooks in \(provider.hooksURL.path)")
     } catch {
         fail("install failed: \(error)")
     }
 
 case "uninstall-hooks":
+    let provider = hookProvider()
     do {
-        try HookInstaller.uninstall(settingsURL: SpectrumPaths.claudeSettings)
-        print("Removed Spectrum hooks from \(SpectrumPaths.claudeSettings.path)")
+        try HookInstaller.uninstall(settingsURL: provider.hooksURL)
+        print("Removed Spectrum hooks from \(provider.hooksURL.path)")
     } catch {
         fail("uninstall failed: \(error)")
     }

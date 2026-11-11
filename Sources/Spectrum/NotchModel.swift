@@ -108,6 +108,7 @@ final class NotchModel {
     @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
     /// The panel opened or closed, or switched tab or conversation.
     @ObservationIgnored var onPanelChange: () -> Void = {}
+    @ObservationIgnored var onTranscriptHook: (String) -> Void = { _ in }
     /// Fixed time for the office's day/night cycle; only the preview command sets it.
     @ObservationIgnored var clockOverride: Date?
     /// Set by the preview command: `ImageRenderer` can't draw AppKit-backed controls such as

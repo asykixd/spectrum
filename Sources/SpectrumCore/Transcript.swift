@@ -25,6 +25,31 @@ public enum Transcript {
     /// Tail of the file that is read; transcripts grow to many megabytes.
     static let tailBytes = 512 * 1024
 
+    /// An open conversation keeps its last messages and parses each new record once.
+    public struct Tail: Sendable {
+        private var reader = JSONLReader()
+        public private(set) var messages: [TranscriptMessage] = []
+
+        public init() {}
+
+        public mutating func read(from url: URL, provider: AgentProvider) throws {
+            var updated = messages
+            // Keep cursor and published messages in sync if a read fails after some records.
+            defer { messages = updated }
+            try reader.read(
+                url, tailBytes: Transcript.tailBytes, maxRecordBytes: Transcript.tailBytes,
+                onReset: { updated.removeAll() },
+                onLine: { line, offset in
+                    let parsed = Transcript.parse(
+                        String(decoding: line, as: UTF8.self), provider: provider,
+                        startingAt: offset)
+                    guard !parsed.isEmpty else { return }
+                    updated.append(contentsOf: parsed)
+                    if updated.count > 40 { updated.removeFirst(updated.count - 40) }
+                })
+        }
+    }
+
     private struct Line: Decodable {
         let type: String?
         let uuid: String?
@@ -106,14 +131,20 @@ public enum Transcript {
     public static func parse(
         _ jsonl: String, provider: AgentProvider = .claude
     ) -> [TranscriptMessage] {
-        if provider == .codex { return parseCodex(jsonl) }
+        parse(jsonl, provider: provider, startingAt: 0)
+    }
+
+    private static func parse(
+        _ jsonl: String, provider: AgentProvider, startingAt: UInt64
+    ) -> [TranscriptMessage] {
+        if provider == .codex { return parseCodex(jsonl, startingAt: startingAt) }
         let decoder = JSONDecoder()
         var messages: [TranscriptMessage] = []
         for (index, raw) in jsonl.split(separator: "\n").enumerated() {
             guard let line = try? decoder.decode(Line.self, from: Data(raw.utf8)),
                 line.isMeta != true, let content = line.message?.content
             else { continue }
-            let id = line.uuid ?? "line-\(index)"
+            let id = line.uuid ?? "line-\(startingAt + UInt64(index))"
             switch (line.type, content) {
             case ("user", .text(let text)):
                 if isUserText(text) { messages.append(.init(id: id, role: .user, text: text)) }
@@ -140,14 +171,14 @@ public enum Transcript {
         return messages
     }
 
-    private static func parseCodex(_ jsonl: String) -> [TranscriptMessage] {
+    private static func parseCodex(_ jsonl: String, startingAt: UInt64) -> [TranscriptMessage] {
         let decoder = JSONDecoder()
         return jsonl.split(separator: "\n").enumerated().compactMap { index, raw in
             guard let line = try? decoder.decode(CodexLine.self, from: Data(raw.utf8)),
                 line.type == "response_item"
             else { return nil }
             let item = line.payload
-            let id = "line-\(index)"
+            let id = "line-\(startingAt + UInt64(index))"
             switch item.type {
             case "message":
                 let role: TranscriptMessage.Role

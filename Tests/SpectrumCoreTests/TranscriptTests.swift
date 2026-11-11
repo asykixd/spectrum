@@ -35,3 +35,45 @@ private let sample = """
 
     #expect(messages.map(\.text) == ["Bash: swift build", "TodoWrite"])
 }
+
+@Test func openTranscriptReadsAppendsAndRetainsMessageIDs() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: url) }
+    let first =
+        #"{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"first"}]}}"#
+    let second =
+        #"{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"second"}]}}"#
+    let split = second.index(second.startIndex, offsetBy: 23)
+    try Data((first + "\n" + second[..<split]).utf8).write(to: url)
+
+    var tail = Transcript.Tail()
+    try tail.read(from: url, provider: .codex)
+    let original = try #require(tail.messages.first)
+    #expect(tail.messages.map(\.text) == ["first"])
+
+    let handle = try FileHandle(forWritingTo: url)
+    defer { try? handle.close() }
+    try handle.seekToEnd()
+    try handle.write(contentsOf: Data((second[split...] + "\n").utf8))
+    try tail.read(from: url, provider: .codex)
+    #expect(tail.messages.map(\.text) == ["first", "second"])
+    #expect(tail.messages.first == original)
+    #expect(Set(tail.messages.map(\.id)).count == 2)
+
+    try tail.read(from: url, provider: .codex)
+    #expect(tail.messages.count == 2)
+}
+
+@Test func openTranscriptReloadsAReplacementAtTheSamePath() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: url) }
+    let first = #"{"type":"user","message":{"content":"first"}}"# + "\n"
+    let replacement = #"{"type":"user","message":{"content":"newer"}}"# + "\n"
+    try Data(first.utf8).write(to: url)
+    var tail = Transcript.Tail()
+    try tail.read(from: url, provider: .claude)
+
+    try Data(replacement.utf8).write(to: url, options: .atomic)
+    try tail.read(from: url, provider: .claude)
+    #expect(tail.messages.map(\.text) == ["newer"])
+}

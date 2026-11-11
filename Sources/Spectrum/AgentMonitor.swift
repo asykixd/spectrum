@@ -70,6 +70,7 @@ final class AgentMonitor {
             store.expirePermission(sessionID: event.sessionKey)
         }
         publish()
+        model.onTranscriptHook(event.sessionKey)
     }
 
     private func wait(for sessionID: String, reply: AgentSocketReply) {

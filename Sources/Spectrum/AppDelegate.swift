@@ -111,6 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let chats = ClaudeChatMonitor(model: model)
         chats.start()
         let transcripts = TranscriptMonitor(model: model)
+        model.onTranscriptHook = { [weak transcripts] id in transcripts?.receivedHook(for: id) }
         let boss = BossMonitor(model: model)
         let launcher = SessionLauncher(model: model)
         model.onStartSession = { [weak launcher] directory, prompt in

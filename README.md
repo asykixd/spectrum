@@ -43,7 +43,7 @@ desks, talk in the meeting room and doze on the sofa.
 
 - Double-tap <kbd>⌘</kbd> (or <kbd>⌥</kbd> / <kbd>⌃</kbd>) for the agents panel; move the pointer
   away, press <kbd>Esc</kbd> or click outside to close it.
-- **Sessions**: Claude Code agents, Codex agents, Claude app chats and AFK agents in separate groups, with what
+- **Sessions**: Claude Code, Codex, Cursor, GitHub Copilot, Claude app chats and AFK agents in separate groups, with what
   each one is doing right now. A ring around the avatar shows how much of its plan is done, and
   "2 files +22 −33" what it changed since your last prompt.
   Hover a row and press ✕ to hide it until it does something new.
@@ -102,7 +102,7 @@ hands approvals back to the original agent. Open the panel and choose **Show Age
    ```
 
 4. Open Spectrum. It has no Dock icon; double-tap <kbd>⌘</kbd> to see it.
-5. In the panel, click the gear and install hooks for **Claude Code** or **Codex**.
+5. In the panel, click the gear and install hooks for your agent.
 6. For Codex, review and trust Spectrum’s hooks in **Settings → Hooks** in the desktop app or with
    `/hooks` in the CLI. Start or reopen a local session to see it in Spectrum.
 
@@ -183,6 +183,9 @@ flowchart LR
   `$CODEX_HOME/hooks.json`). Spectrum uses the same socket and permission flow and reads recent
   messages and tool calls from the session’s local transcript. See the
   [Codex hooks documentation](https://learn.chatgpt.com/docs/hooks) for trust review.
+- **Cursor** and **GitHub Copilot** report local session activity through user hooks in
+  `~/.cursor/hooks.json` and `~/.copilot/hooks/spectrum.json` (`$COPILOT_HOME` is supported).
+  Continue in the agent's app for conversations and permission prompts.
 - **Replies** run `claude -p --resume <session>` in the background: the answer appears in
   Spectrum, not in the session's open terminal.
 - **Music**: MediaRemote no longer answers third-party apps since macOS 15.4, so Spectrum asks
@@ -209,8 +212,8 @@ The app binary doubles as a small CLI:
 
 | Command | Description |
 | --- | --- |
-| `Spectrum install-hooks [claude\|codex]` | Add Spectrum's hooks for the selected agent (default: Claude Code) |
-| `Spectrum uninstall-hooks [claude\|codex]` | Remove only Spectrum's hooks |
+| `Spectrum install-hooks [claude\|codex\|cursor\|copilot]` | Add Spectrum's hooks for the selected agent (default: Claude Code) |
+| `Spectrum uninstall-hooks [claude\|codex\|cursor\|copilot]` | Remove only Spectrum's hooks |
 | `Spectrum hook` | Called by the hooks; forwards the event on stdin to the app |
 | `Spectrum preview <dir>` | Render every state with demo data to PNG files (the screenshots above) |
 | `Spectrum benchmark-usage [record count]` | Time cold, unchanged and append scans on synthetic transcripts |

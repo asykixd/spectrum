@@ -16,7 +16,7 @@ let arguments = CommandLine.arguments.dropFirst()
 private func hookProvider() -> AgentProvider {
     guard let name = arguments.dropFirst().first else { return .claude }
     guard let provider = AgentProvider(rawValue: name), arguments.count == 2 else {
-        fail("expected provider claude or codex")
+        fail("expected provider claude, codex, cursor or copilot")
     }
     return provider
 }
@@ -47,7 +47,7 @@ case "install-hooks":
 case "uninstall-hooks":
     let provider = hookProvider()
     do {
-        try HookInstaller.uninstall(settingsURL: provider.hooksURL)
+        try HookInstaller.uninstall(settingsURL: provider.hooksURL, provider: provider)
         print("Removed Spectrum hooks from \(provider.hooksURL.path)")
     } catch {
         fail("uninstall failed: \(error)")

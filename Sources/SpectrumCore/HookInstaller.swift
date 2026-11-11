@@ -5,6 +5,7 @@ public enum HookInstaller {
     public enum InstallError: Error, Equatable {
         case settingsNotAnObject
         case invalidHooks
+        case unsupportedVersion
     }
 
     /// Trailing shell comment that identifies Spectrum's hook commands.
@@ -24,21 +25,43 @@ public enum HookInstaller {
         provider == .codex ? codexEvents : events
     }
 
+    private static func eventNames(for provider: AgentProvider) -> [String] {
+        switch provider {
+        case .cursor: AgentEvent.cursorEvents.keys.sorted()
+        case .copilot:
+            ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "SessionEnd"]
+        case .claude, .codex: events(for: provider).map(\.rawValue)
+        }
+    }
+
     /// How long a permission hook waits for the island before the agent shows its own dialog.
     public static let permissionWait = 60
 
     public static func command(executablePath: String, provider: AgentProvider = .claude) -> String
     {
         let quoted = "'" + executablePath.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
-        let arguments = provider == .codex ? "hook codex" : "hook"
-        return "\(quoted) \(arguments) \(marker)"
+        let arguments = provider == .claude ? "hook" : "hook \(provider.rawValue)"
+        // Copilot treats a failed pre-tool command as a denial. A missing app must stay neutral.
+        let fallback = provider == .copilot ? " || true" : ""
+        return "\(quoted) \(arguments)\(fallback) \(marker)"
     }
 
     public static func installing(
         into settings: [String: Any], command: String, provider: AgentProvider = .claude
     ) -> [String: Any] {
-        var result = removing(from: settings)
+        var result = removing(from: settings, provider: provider)
         var hooks = result["hooks"] as? [String: Any] ?? [:]
+        if provider.usesFlatHooks {
+            for event in eventNames(for: provider) {
+                var entries = hooks[event] as? [[String: Any]] ?? []
+                let timeout = provider == .copilot ? "timeoutSec" : "timeout"
+                entries.append(["type": "command", "command": command, timeout: 5])
+                hooks[event] = entries
+            }
+            result["version"] = 1
+            result["hooks"] = hooks
+            return result
+        }
         for event in events(for: provider) {
             let timeout: Int
             switch event {
@@ -62,10 +85,17 @@ public enum HookInstaller {
         return result
     }
 
-    public static func removing(from settings: [String: Any]) -> [String: Any] {
+    public static func removing(
+        from settings: [String: Any], provider: AgentProvider = .claude
+    ) -> [String: Any] {
         guard var hooks = settings["hooks"] as? [String: Any] else { return settings }
         for (event, value) in hooks {
             guard let groups = value as? [Any] else { continue }
+            if provider.usesFlatHooks {
+                let kept = groups.filter { !isSpectrumEntry($0) }
+                hooks[event] = kept.isEmpty ? nil : kept
+                continue
+            }
             let kept = groups.compactMap { group -> Any? in
                 guard var dict = group as? [String: Any], let entries = dict["hooks"] as? [Any]
                 else { return group }
@@ -78,7 +108,7 @@ public enum HookInstaller {
             hooks[event] = kept.isEmpty ? nil : kept
         }
         var result = settings
-        result["hooks"] = hooks.isEmpty ? nil : hooks
+        result["hooks"] = hooks.isEmpty && !provider.usesFlatHooks ? nil : hooks
         return result
     }
 
@@ -87,6 +117,9 @@ public enum HookInstaller {
         executablePath: String, settingsURL: URL, provider: AgentProvider = .claude
     ) throws {
         let settings = try readSettings(at: settingsURL)
+        if provider.usesFlatHooks, let version = settings["version"], version as? Int != 1 {
+            throw InstallError.unsupportedVersion
+        }
         if let hooks = settings["hooks"] {
             guard hooks is [String: [[String: Any]]]
             else { throw InstallError.invalidHooks }
@@ -104,10 +137,10 @@ public enum HookInstaller {
         try writeSettings(updated, to: settingsURL)
     }
 
-    public static func uninstall(settingsURL: URL) throws {
+    public static func uninstall(settingsURL: URL, provider: AgentProvider = .claude) throws {
         let settings = try readSettings(at: settingsURL)
-        guard hasSpectrumHooks(in: settings) else { return }
-        try writeSettings(removing(from: settings), to: settingsURL)
+        guard hasSpectrumHooks(in: settings, provider: provider) else { return }
+        try writeSettings(removing(from: settings, provider: provider), to: settingsURL)
     }
 
     /// True when Spectrum's hooks exist but don't match what this copy would install: they call
@@ -121,8 +154,11 @@ public enum HookInstaller {
         else { return false }
         let expected = command(executablePath: executablePath, provider: provider)
         func commands(_ groups: [[String: Any]]) -> [String] {
-            groups
-                .compactMap { $0["hooks"] as? [[String: Any]] }.joined()
+            let entries =
+                provider.usesFlatHooks
+                ? groups : groups.flatMap { $0["hooks"] as? [[String: Any]] ?? [] }
+            return
+                entries
                 .compactMap { $0["command"] as? String }
                 .filter { $0.hasSuffix(marker) }
         }
@@ -130,16 +166,19 @@ public enum HookInstaller {
         let allCommands = installed.values.joined()
         guard !allCommands.isEmpty else { return false }
         return allCommands.contains { $0 != expected }
-            || events(for: provider).contains { installed[$0.rawValue]?.count != 1 }
+            || eventNames(for: provider).contains { installed[$0]?.count != 1 }
     }
 
-    public static func isInstalled(settingsURL: URL) -> Bool {
+    public static func isInstalled(settingsURL: URL, provider: AgentProvider = .claude) -> Bool {
         guard let settings = try? readSettings(at: settingsURL) else { return false }
-        return hasSpectrumHooks(in: settings)
+        return hasSpectrumHooks(in: settings, provider: provider)
     }
 
-    private static func hasSpectrumHooks(in settings: [String: Any]) -> Bool {
+    private static func hasSpectrumHooks(in settings: [String: Any], provider: AgentProvider)
+        -> Bool
+    {
         guard let hooks = settings["hooks"] as? [String: [[String: Any]]] else { return false }
+        if provider.usesFlatHooks { return hooks.values.joined().contains(where: isSpectrumEntry) }
         return hooks.values.joined().contains { group in
             (group["hooks"] as? [Any])?.contains(where: isSpectrumEntry) == true
         }

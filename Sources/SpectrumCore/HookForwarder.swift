@@ -11,7 +11,7 @@ public enum HookForwarder {
                 input, from: provider, terminalTab: terminalTab),
             let event = try? AgentEvent.decode(payload)
         else { return Data() }
-        if event.kind == .permissionRequest {
+        if event.kind == .permissionRequest && provider.supportsPermissionHooks {
             return
                 (try? AgentSocket.request(
                     payload, to: socketPath, timeout: TimeInterval(HookInstaller.permissionWait)))

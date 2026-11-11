@@ -10,7 +10,7 @@ public enum ToolKind: Equatable, Sendable {
     public init(_ toolName: String) {
         switch toolName {
         case "Read", "Grep", "Glob", "LS", "NotebookRead", "TaskList", "TaskGet": self = .reading
-        case "Bash", "BashOutput", "KillShell", "KillBash", "Monitor", "exec_command",
+        case "Bash", "Shell", "BashOutput", "KillShell", "KillBash", "Monitor", "exec_command",
             "write_stdin":
             self = .terminal
         case "WebSearch", "WebFetch", "web_search": self = .browsing

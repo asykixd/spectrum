@@ -247,13 +247,13 @@ struct SessionsListView: View {
     }
 
     private var emptyStateHint: String {
-        if model.installedHooks.contains(.codex) {
+        if model.installedHooks == [.codex] {
             return "Trust Spectrum’s hooks in Codex, then start a session."
         }
-        if model.installedHooks.contains(.claude) {
-            return "Start a Claude Code session or a chat in the Claude app."
+        if !model.installedHooks.isEmpty {
+            return "Start a local session to see its activity here."
         }
-        return "Install hooks to see sessions from Claude Code or Codex."
+        return "Install hooks for the agents you use."
     }
 
     private var emptyState: some View {
@@ -317,7 +317,7 @@ private struct SessionRow: View {
                     Text(session.statusText)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(isWaiting ? Color(hex: 0xF5B544) : .white.opacity(0.6))
-                    if session.provider == .codex {
+                    if session.provider != .claude {
                         Text(session.provider.name)
                             .font(.system(size: 11))
                             .foregroundStyle(.white.opacity(0.4))

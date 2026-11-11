@@ -17,7 +17,9 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
 
     public let provider: AgentProvider
     public let sessionID: String
-    public var sessionKey: String { provider == .codex ? "codex:\(sessionID)" : sessionID }
+    public var sessionKey: String {
+        provider == .claude ? sessionID : "\(provider.rawValue):\(sessionID)"
+    }
     public let kind: Kind
     public let cwd: String?
     public let toolName: String?
@@ -32,6 +34,13 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     /// Lines a settled edit or write changed.
     public let fileChange: FileChange?
     private let permissionSuggestions: [PermissionSuggestion]?
+
+    // Cursor's pre-tool hooks require a permission response; tracking uses observation-only hooks.
+    static let cursorEvents: [String: Kind] = [
+        "sessionStart": .sessionStart, "sessionEnd": .sessionEnd,
+        "beforeSubmitPrompt": .userPromptSubmit, "postToolUse": .postToolUse,
+        "postToolUseFailure": .postToolUse, "stop": .stop,
+    ]
 
     enum CodingKeys: String, CodingKey {
         case provider = "spectrum_provider"
@@ -122,11 +131,25 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     public static func forwardedPayload(
         _ data: Data, from provider: AgentProvider, terminalTab: TerminalTab? = nil
     ) throws -> Data {
-        guard provider == .codex || terminalTab != nil else { return data }
+        guard provider != .claude || terminalTab != nil else { return data }
         guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return data
         }
         object[CodingKeys.provider.rawValue] = provider.rawValue
+        if provider == .cursor {
+            if let name = object[CodingKeys.kind.rawValue] as? String, let kind = cursorEvents[name]
+            {
+                object[CodingKeys.kind.rawValue] = kind.rawValue
+            }
+            object[CodingKeys.sessionID.rawValue] =
+                (object["conversation_id"] as? String)
+                ?? (object[CodingKeys.sessionID.rawValue] as? String)
+            object[CodingKeys.cwd.rawValue] =
+                (object[CodingKeys.cwd.rawValue] as? String)
+                ?? (object["workspace_roots"] as? [String])?.first
+            object["user_email"] = nil
+        }
+        if !provider.supportsTranscript { object[CodingKeys.transcriptPath.rawValue] = nil }
         object[CodingKeys.terminalTTY.rawValue] = terminalTab?.tty
         object[CodingKeys.terminalLeader.rawValue] = terminalTab?.sessionLeader
         return try JSONSerialization.data(withJSONObject: object)

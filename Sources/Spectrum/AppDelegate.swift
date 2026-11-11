@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let path = Bundle.main.executableURL?.resolvingSymlinksInPath().path
         for provider in AgentProvider.allCases {
             let url = provider.hooksURL
-            if HookInstaller.isInstalled(settingsURL: url) {
+            if HookInstaller.isInstalled(settingsURL: url, provider: provider) {
                 model.installedHooks.insert(provider)
             }
             if let path,
@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         model.onRemoveHooks = { [weak model] provider in
             do {
-                try HookInstaller.uninstall(settingsURL: provider.hooksURL)
+                try HookInstaller.uninstall(settingsURL: provider.hooksURL, provider: provider)
                 model?.installedHooks.remove(provider)
             } catch {
                 log.error("removing \(provider.name) hooks failed: \(error)")

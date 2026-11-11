@@ -45,14 +45,10 @@ struct ConversationView: View {
             }
 
             if messages.isEmpty {
-                Text(
-                    session.transcriptPath == nil
-                        ? "No transcript yet: it appears after the session's next event."
-                        : "Loading conversation…"
-                )
-                .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(0.5))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text(emptyConversation)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
                     // A short conversation sits still; a long one scrolls, pinned to the bottom.
@@ -79,6 +75,15 @@ struct ConversationView: View {
             ForEach(messages) { MessageBubble(message: $0) }
         }
         .padding(.vertical, 4)
+    }
+
+    private var emptyConversation: String {
+        if !session.provider.supportsTranscript {
+            return "Open \(session.provider.name) to read the conversation."
+        }
+        return session.transcriptPath == nil
+            ? "No transcript yet: it appears after the session's next event."
+            : "Loading conversation…"
     }
 
     private var replyBar: some View {

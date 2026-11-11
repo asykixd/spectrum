@@ -37,4 +37,17 @@ public enum SpectrumPaths {
     public static var claudeSettings: URL {
         FileManager.default.homeDirectoryForCurrentUser.appending(path: ".claude/settings.json")
     }
+
+    public static var cursorHooks: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appending(path: ".cursor/hooks.json")
+    }
+
+    public static var copilotHooks: URL {
+        if let home = ProcessInfo.processInfo.environment["COPILOT_HOME"], !home.isEmpty {
+            return URL(fileURLWithPath: home, isDirectory: true).appending(
+                path: "hooks/spectrum.json")
+        }
+        return FileManager.default.homeDirectoryForCurrentUser.appending(
+            path: ".copilot/hooks/spectrum.json")
+    }
 }

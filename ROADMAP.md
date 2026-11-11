@@ -38,7 +38,7 @@
 - [x] Test that `Spectrum hook` exits quickly when the app is down or stuck
 
 ## Later
-- [ ] Cursor and GitHub Copilot agents
+- [x] Local Cursor and GitHub Copilot activity in the sessions list and office
 - [ ] Reply to Claude app chats from the panel
 - [ ] Developer ID signing and notarization once an Apple Developer Program membership is available
 - [ ] Auto-update with Sparkle (after notarization)

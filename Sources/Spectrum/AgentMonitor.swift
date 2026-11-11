@@ -82,7 +82,8 @@ final class AgentMonitor {
         }
         pendingPermissions.removeValue(forKey: event.sessionKey)?.reply.send(nil)
         let requestID =
-            event.kind == .permissionRequest && model.settings.answerPermissions
+            event.kind == .permissionRequest && event.provider.supportsPermissionHooks
+                && model.settings.answerPermissions
                 && !model.settings.privacyMode
             ? UUID() : nil
         store.apply(event, at: Date(), permissionID: requestID)

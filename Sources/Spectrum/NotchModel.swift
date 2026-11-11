@@ -75,7 +75,7 @@ final class NotchModel {
 
     var agentsOpen = false {
         didSet {
-            if agentsOpen { attention.acknowledge() }
+            if agentsOpen || oldValue { attention.acknowledge() }
             if !agentsOpen {
                 terminalError = nil
                 keyboardSessionID = nil
@@ -85,6 +85,7 @@ final class NotchModel {
         }
     }
     @ObservationIgnored private var attention = AttentionTracker()
+    @ObservationIgnored private var reminderTimer: Timer?
     /// What the island is calling the user about, if anything.
     private(set) var signal: AttentionTracker.Signal?
     var isHovering = false { didSet { updateMode() } }
@@ -210,11 +211,12 @@ final class NotchModel {
         let chats = settings.showClaudeChats ? chatSessions : []
         let visible = dismissals.visible(chats + codeSessions)
         if visible != sessions { sessions = visible }
-        attention.update(visible, now: Date())
-        if agentsOpen { attention.acknowledge() }
-        if let until = attention.doneUntil, until > Date() {
+        let now = Date()
+        attention.update(visible, now: now)
+        if agentsOpen { attention.acknowledge(now: now, includeReminders: false) }
+        if let until = attention.doneUntil, until > now {
             // Re-evaluate once the checkmark has had its moment.
-            DispatchQueue.main.asyncAfter(deadline: .now() + until.timeIntervalSinceNow + 0.05) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + until.timeIntervalSince(now) + 0.05) {
                 [weak self] in
                 self?.updateMode()
             }
@@ -274,7 +276,12 @@ final class NotchModel {
 
     private func updateMode() {
         let track = settings.showMusic ? nowPlaying : nil
-        var current = attention.signal(at: Date())
+        let now = Date()
+        attention.remindAfter =
+            settings.waitReminderSeconds > 0 ? Double(settings.waitReminderSeconds) : nil
+        scheduleReminder(
+            !agentsOpen && settings.alertWhenNeeded ? attention.nextReminder(after: now) : nil)
+        var current = attention.signal(at: now)
         switch current {
         case .needsYou where !settings.alertWhenNeeded, .done where !settings.flashWhenDone:
             current = nil
@@ -297,6 +304,22 @@ final class NotchModel {
         }
         mode = next
         onModeChange(next)
+    }
+
+    private func scheduleReminder(_ date: Date?) {
+        guard reminderTimer?.fireDate != date else { return }
+        reminderTimer?.invalidate()
+        reminderTimer = nil
+        guard let date else { return }
+        let timer = Timer(fire: date, interval: 0, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.reminderTimer = nil
+                self?.updateMode()
+            }
+        }
+        timer.tolerance = 0.3
+        RunLoop.main.add(timer, forMode: .common)
+        reminderTimer = timer
     }
 }
 

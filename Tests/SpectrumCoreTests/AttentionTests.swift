@@ -87,3 +87,28 @@ private func session(
             current: .hidden, isPlaying: false, hasTrack: false, isHovering: false,
             agentsOpen: false, signal: .done(session("a", .idle))) == .done)
 }
+
+@Test func anAcknowledgedWaitCanPulseOneMoreTime() {
+    var tracker = AttentionTracker(remindAfter: 30)
+    let waiting = session("a", .waitingForUser)
+    tracker.update([waiting], now: start)
+    tracker.acknowledge(now: start)
+    #expect(tracker.nextReminder(after: start) == start.addingTimeInterval(30))
+    #expect(tracker.signal(at: start.addingTimeInterval(29)) == nil)
+    #expect(tracker.signal(at: start.addingTimeInterval(30)) == .needsYou(waiting))
+
+    tracker.acknowledge(now: start.addingTimeInterval(31))
+    #expect(tracker.nextReminder(after: start.addingTimeInterval(31)) == nil)
+    #expect(tracker.signal(at: start.addingTimeInterval(120)) == nil)
+}
+
+@Test func aNewPermissionInTheSameSessionIsNeverSilencedByAnOlderOne() {
+    var tracker = AttentionTracker(remindAfter: 30)
+    var waiting = session("a", .waitingForUser)
+    waiting.permission = PermissionPrompt(tool: "Bash", detail: "swift test", requestID: UUID())
+    tracker.update([waiting], now: start)
+    tracker.acknowledge(now: start)
+    waiting.permission?.requestID = UUID()
+    tracker.update([waiting], now: start.addingTimeInterval(1))
+    #expect(tracker.signal(at: start.addingTimeInterval(1)) == .needsYou(waiting))
+}

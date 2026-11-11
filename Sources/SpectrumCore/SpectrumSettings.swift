@@ -31,6 +31,8 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     public var pauseChatsOnBattery = true
     /// Pulse the island while a Claude Code agent waits for permission or an answer.
     public var alertWhenNeeded = true
+    /// The delay before a looked-at request pulses once more, or zero to disable reminders.
+    public var waitReminderSeconds = 30
     /// Flash a checkmark when a task finishes.
     public var flashWhenDone = true
     /// Let Claude Code permission requests be allowed or denied from the island.
@@ -75,6 +77,9 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         alertWhenNeeded =
             try container.decodeIfPresent(Bool.self, forKey: .alertWhenNeeded)
             ?? defaults.alertWhenNeeded
+        waitReminderSeconds =
+            try container.decodeIfPresent(Int.self, forKey: .waitReminderSeconds)
+            ?? defaults.waitReminderSeconds
         flashWhenDone =
             try container.decodeIfPresent(Bool.self, forKey: .flashWhenDone)
             ?? defaults.flashWhenDone

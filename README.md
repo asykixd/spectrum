@@ -142,6 +142,7 @@ The gear in the agents panel opens Settings, installs or removes the hooks and q
 | Use real audio for the waveform (macOS 14.2+) | Off |
 | Show synced lyrics in the expanded player | On |
 | Blink when an agent needs permission or an answer | On |
+| Remind me about waiting agents | 30 seconds |
 | Flash a checkmark when a task finishes | On |
 | Allow or deny permission requests from the island | On |
 | Trackpad haptics when the island opens and closes | On |

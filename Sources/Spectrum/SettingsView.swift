@@ -53,6 +53,15 @@ struct SettingsView: View {
                 Toggle(
                     "Blink when an agent needs permission or an answer",
                     isOn: $model.settings.alertWhenNeeded)
+                Picker(
+                    "Remind me about waiting agents", selection: $model.settings.waitReminderSeconds
+                ) {
+                    Text("Off").tag(0)
+                    ForEach([15, 30, 60, 120], id: \.self) { seconds in
+                        Text("\(seconds) seconds").tag(seconds)
+                    }
+                }
+                .disabled(!model.settings.alertWhenNeeded)
                 Toggle(
                     "Flash a checkmark when a task finishes", isOn: $model.settings.flashWhenDone)
                 Picker("Agents panel shortcut", selection: $model.settings.shortcut) {

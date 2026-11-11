@@ -11,6 +11,11 @@ public enum SpectrumPaths {
         supportDirectory.appending(path: "agent.sock")
     }
 
+    public static var usageCache: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Caches/dev.spectrum/usage.plist")
+    }
+
     /// Claude Code's transcripts, one folder per project.
     public static var claudeProjects: URL {
         FileManager.default.homeDirectoryForCurrentUser.appending(

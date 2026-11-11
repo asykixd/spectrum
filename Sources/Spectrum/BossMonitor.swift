@@ -6,7 +6,8 @@ import SpectrumCore
 final class BossMonitor {
     private let model: NotchModel
     private var timer: Timer?
-    private var scanner = UsageScanner(root: SpectrumPaths.claudeProjects)
+    private var scanner = UsageScanner(
+        root: SpectrumPaths.claudeProjects, cacheURL: SpectrumPaths.usageCache)
     private var scanning = false
     /// Transcripts can hold hundreds of megabytes; a minute-old total is fresh enough.
     private let interval: TimeInterval = 60
@@ -39,8 +40,22 @@ final class BossMonitor {
             // The five-hour window can reach into yesterday evening.
             let since = Calendar.current.startOfDay(for: now)
                 .addingTimeInterval(-BossReport.windowLength)
+            let baseline: UsageScanner
+            if model.bossReport == nil {
+                let (restored, cached) = await Task.detached(priority: .utility) {
+                    var scanner = scanner
+                    let report = scanner.cachedLog(since: since).map {
+                        BossReport(log: $0, now: now)
+                    }
+                    return (scanner, report)
+                }.value
+                if let cached { model.bossReport = cached }
+                baseline = restored
+            } else {
+                baseline = scanner
+            }
             let (updated, report) = await Task.detached(priority: .utility) {
-                var scanner = scanner
+                var scanner = baseline
                 let log = scanner.scan(since: since)
                 return (scanner, BossReport(log: log, now: now))
             }.value

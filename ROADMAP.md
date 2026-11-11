@@ -14,7 +14,7 @@
 - [x] Stop the boss, transcript and chat timers while the panel is closed
 - [x] Reload the open transcript on hook events or file writes, reading only appended bytes
 - [x] Stream transcripts in chunks in `UsageScanner` and skip decoding message payloads without usage or prompts
-- [ ] Persist `UsageScanner` offsets and totals so the boss tab is instant after a relaunch
+- [x] Persist `UsageScanner` offsets and totals so the boss tab can show cached data after a relaunch
 
 ## Next
 - [x] Track local Codex sessions in the list and pixel office, with transcripts and approvals

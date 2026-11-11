@@ -1,8 +1,8 @@
 import Foundation
 
 /// Token usage read from Claude Code transcripts.
-public struct UsageLog: Sendable {
-    public struct Tokens: Equatable, Sendable {
+public struct UsageLog: Codable, Sendable {
+    public struct Tokens: Codable, Equatable, Sendable {
         public var input: Int
         public var output: Int
         public var cacheWrite5m: Int
@@ -12,7 +12,7 @@ public struct UsageLog: Sendable {
         public var total: Int { input + output + cacheWrite5m + cacheWrite1h + cacheRead }
     }
 
-    public struct Entry: Sendable {
+    public struct Entry: Codable, Sendable {
         public let messageID: String
         public let date: Date
         public let sessionID: String
@@ -32,16 +32,22 @@ public struct UsageLog: Sendable {
     }
 
     /// Something the user asked for, to say what an agent worked on.
-    public struct Prompt: Sendable {
+    public struct Prompt: Codable, Sendable {
         public let date: Date
         public let sessionID: String
         public let text: String
     }
 
+    public struct Activity: Codable, Sendable {
+        public let sessionID: String
+        public let project: String
+        public let date: Date
+    }
+
     public private(set) var entries: [Entry] = []
     public private(set) var prompts: [Prompt] = []
     /// Every moment a session did something, for working out active time.
-    public private(set) var activity: [(sessionID: String, project: String, date: Date)] = []
+    public private(set) var activity: [Activity] = []
 
     public init() {}
 
@@ -148,7 +154,7 @@ public struct UsageLog: Sendable {
                 let sessionID = header.sessionId
             else { return }
             let project = header.cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "?"
-            log.activity.append((sessionID, project, date))
+            log.activity.append(Activity(sessionID: sessionID, project: project, date: date))
             switch header.type {
             case "assistant":
                 guard let message, let id = message.id, let usage = message.usage,

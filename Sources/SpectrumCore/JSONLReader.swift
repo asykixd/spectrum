@@ -3,7 +3,7 @@ import Foundation
 
 /// A cursor for an append-only JSONL file. An unfinished record stays in memory until its newline.
 struct JSONLReader: Sendable {
-    private struct FileStamp: Equatable, Sendable {
+    fileprivate struct FileStamp: Codable, Equatable, Sendable {
         let device: dev_t
         let inode: ino_t
         let seconds: Int
@@ -19,11 +19,26 @@ struct JSONLReader: Sendable {
         func matches(_ other: Self) -> Bool { device == other.device && inode == other.inode }
     }
 
+    struct Checkpoint: Codable, Equatable, Sendable {
+        fileprivate let stamp: FileStamp
+        fileprivate let offset: UInt64
+    }
+
     private var stamp: FileStamp?
     private var offset: UInt64 = 0
     private var lineStart: UInt64 = 0
     private var pending = Data()
     private var discarding = false
+
+    init(checkpoint: Checkpoint? = nil) {
+        guard let checkpoint else { return }
+        stamp = checkpoint.stamp
+        offset = checkpoint.offset
+        lineStart = offset
+    }
+
+    /// Pending bytes can be read again after relaunch; only complete records are cached.
+    var checkpoint: Checkpoint? { stamp.map { Checkpoint(stamp: $0, offset: lineStart) } }
 
     mutating func read(
         _ url: URL, tailBytes: Int? = nil, maxRecordBytes: Int? = nil,

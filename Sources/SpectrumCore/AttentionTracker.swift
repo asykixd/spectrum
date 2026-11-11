@@ -76,7 +76,8 @@ public struct AttentionTracker: Sendable {
         return seen.date.addingTimeInterval(remindAfter)
     }
 
-    public func signal(at now: Date) -> Signal? {
+    public func signal(at now: Date, hideAgentContent: Bool = false) -> Signal? {
+        guard !hideAgentContent else { return nil }
         let needsAttention = waiting.filter { session in
             let key = WaitKey(session)
             return acknowledged[key] == nil || reminder(for: key).map { now >= $0 } == true

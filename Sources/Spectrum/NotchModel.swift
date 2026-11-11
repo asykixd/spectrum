@@ -31,6 +31,18 @@ final class NotchModel {
             {
                 onPlaybackSettingsChange()
             }
+            if (settings.privacyMode && !oldValue.privacyMode)
+                || (!settings.answerPermissions && oldValue.answerPermissions)
+            {
+                onReleasePermissionRequests()
+            }
+            if settings.privacyMode != oldValue.privacyMode {
+                if settings.privacyMode {
+                    selectedSessionID = nil
+                    keyboardSessionID = nil
+                }
+                onPanelChange()
+            }
         }
     }
 
@@ -48,7 +60,9 @@ final class NotchModel {
     var chatSessions: [AgentSession] = [] { didSet { refreshSessions() } }
     /// What the panel shows: chats first, without the ones the user removed.
     private(set) var sessions: [AgentSession] = []
-    var waitingCount: Int { sessions.filter { $0.activity == .waitingForUser }.count }
+    var waitingCount: Int {
+        settings.privacyMode ? 0 : sessions.filter { $0.activity == .waitingForUser }.count
+    }
     @ObservationIgnored private var dismissals = Dismissals()
 
     /// Code session whose conversation is open in the sessions tab.
@@ -118,6 +132,7 @@ final class NotchModel {
     @ObservationIgnored var onPermission: (String, UUID, PermissionDecision) -> Void = { _, _, _ in
     }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
+    @ObservationIgnored var onReleasePermissionRequests: () -> Void = {}
     @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
     @ObservationIgnored var onWaveformActivity: (Bool) -> Void = { _ in }
     /// The panel opened or closed, or switched tab or conversation.
@@ -247,6 +262,7 @@ final class NotchModel {
     }
 
     func handlePanelKey(_ key: PanelKey, repeating: Bool) -> Bool {
+        guard !settings.privacyMode else { return false }
         let approval: AgentSession? =
             mode == .permission
             ? permissionRequest?.session
@@ -280,8 +296,9 @@ final class NotchModel {
         attention.remindAfter =
             settings.waitReminderSeconds > 0 ? Double(settings.waitReminderSeconds) : nil
         scheduleReminder(
-            !agentsOpen && settings.alertWhenNeeded ? attention.nextReminder(after: now) : nil)
-        var current = attention.signal(at: now)
+            !agentsOpen && settings.alertWhenNeeded && !settings.privacyMode
+                ? attention.nextReminder(after: now) : nil)
+        var current = attention.signal(at: now, hideAgentContent: settings.privacyMode)
         switch current {
         case .needsYou where !settings.alertWhenNeeded, .done where !settings.flashWhenDone:
             current = nil

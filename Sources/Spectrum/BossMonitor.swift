@@ -22,7 +22,8 @@ final class BossMonitor {
             model.tab == .sessions && model.selectedSessionID == nil
             && !model.newSessionOpen
             && model.sessions.contains { $0.kind == .code && $0.provider == .claude }
-        guard model.agentsOpen, model.tab == .boss || showsSessions else {
+        guard model.agentsOpen, !model.settings.privacyMode, model.tab == .boss || showsSessions
+        else {
             timer?.invalidate()
             timer = nil
             return

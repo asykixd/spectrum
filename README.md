@@ -84,6 +84,9 @@ instead of replacing it.
 Hover the warning to see what the agent asks for and allow or deny it right there. If you don't
 answer within a minute, Claude Code shows its usual dialog in the terminal.
 
+Choose **Hide Agent Details** before sharing your screen. Spectrum suppresses agent alerts and
+hands approvals back to the original agent. Open the panel and choose **Show Agent Details** to restore them.
+
 <img src="docs/screenshots/permission.png" width="470" alt="Allow or deny from the island">
 
 ## Installation

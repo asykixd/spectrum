@@ -112,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onPermission = { [weak agents] sessionID, requestID, decision in
             agents?.answer(sessionID: sessionID, requestID: requestID, with: decision)
         }
+        model.onReleasePermissionRequests = { [weak agents] in agents?.releasePermissions() }
         agents.start()
         let chats = ClaudeChatMonitor(model: model)
         chats.start()

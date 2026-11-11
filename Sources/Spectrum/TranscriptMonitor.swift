@@ -26,7 +26,8 @@ final class TranscriptMonitor {
 
     func update() {
         var visible: Target?
-        if model.agentsOpen, model.tab == .sessions, let session = model.selectedSession,
+        if model.agentsOpen, !model.settings.privacyMode, model.tab == .sessions,
+            let session = model.selectedSession,
             let path = session.transcriptPath
         {
             visible = Target(

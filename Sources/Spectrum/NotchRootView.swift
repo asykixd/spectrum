@@ -46,11 +46,29 @@ struct NotchRootView: View {
         case .expanded:
             ExpandedMusicView(model: model)
         case .agents:
-            AgentsPanelView(model: model)
+            if model.settings.privacyMode {
+                PrivacyPanel(model: model)
+            } else {
+                AgentsPanelView(model: model)
+            }
         case .attention, .done:
             SignalView(model: model)
         case .permission:
             PermissionView(model: model)
         }
+    }
+}
+
+private struct PrivacyPanel: View {
+    let model: NotchModel
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "eye.slash").font(.system(size: 21))
+            Text("Agent details are hidden").font(.system(size: 14, weight: .semibold))
+            Button("Show Agent Details") { model.settings.privacyMode = false }
+        }
+        .foregroundStyle(.white.opacity(0.8))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

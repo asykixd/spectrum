@@ -71,6 +71,10 @@ struct SettingsView: View {
                 }
             }
             Section("Agents") {
+                Toggle(isOn: $model.settings.privacyMode) {
+                    Text("Hide agent details")
+                    Text("Turn on before sharing your screen to hide agent activity and alerts.")
+                }
                 Picker("Office characters", selection: $model.settings.characters) {
                     Text("Clawd").tag(SpectrumSettings.CharacterStyle.clawd)
                     Text("People").tag(SpectrumSettings.CharacterStyle.people)

@@ -150,6 +150,7 @@ private struct PanelMenu: View {
     private var menu: some View {
         Menu {
             Button("Settings…", action: model.onOpenSettings)
+            Button("Hide Agent Details") { model.settings.privacyMode = true }
             Divider()
             ForEach(AgentProvider.allCases, id: \.self) { provider in
                 if model.installedHooks.contains(provider) {

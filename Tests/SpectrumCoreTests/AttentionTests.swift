@@ -112,3 +112,16 @@ private func session(
     tracker.update([waiting], now: start.addingTimeInterval(1))
     #expect(tracker.signal(at: start.addingTimeInterval(1)) == .needsYou(waiting))
 }
+
+@Test func privacyModeSuppressesBothWaitingAndCompletionSignals() {
+    var tracker = AttentionTracker(remindAfter: 10)
+    let waiting = session("a", .waitingForUser)
+    tracker.update([waiting, session("b", .thinking)], now: start)
+    tracker.update([waiting, session("b", .finished)], now: start)
+
+    #expect(tracker.signal(at: start) == .needsYou(waiting))
+    #expect(tracker.signal(at: start, hideAgentContent: true) == nil)
+    tracker.acknowledge(now: start)
+    #expect(tracker.signal(at: start) == .done(session("b", .finished)))
+    #expect(tracker.signal(at: start, hideAgentContent: true) == nil)
+}

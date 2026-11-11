@@ -137,6 +137,11 @@ final class ClaudeChatMonitor {
     /// Ticks only as often as the current read interval, so a closed panel costs one wakeup
     /// every few seconds instead of one a second.
     func tick() {
+        if model.settings.privacyMode {
+            timer?.invalidate()
+            timer = nil
+            return
+        }
         let frontmost =
             NSWorkspace.shared.frontmostApplication?.bundleIdentifier == ClaudeAppReader.bundleID
         let interval = ChatPollPolicy.interval(
@@ -171,6 +176,7 @@ final class ClaudeChatMonitor {
         Task {
             defer { reading = false }
             let snapshot = await reader.snapshot()
+            guard !model.settings.privacyMode else { return }
             let chats = tracker.update(snapshot, at: Date())
             if model.chatSessions != chats { model.chatSessions = chats }
         }

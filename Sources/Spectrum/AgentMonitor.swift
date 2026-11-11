@@ -45,9 +45,17 @@ final class AgentMonitor {
     }
 
     func stop() {
-        for pending in pendingPermissions.values { pending.reply.send(nil) }
-        pendingPermissions = [:]
+        releasePermissions()
         server.stop()
+    }
+
+    func releasePermissions() {
+        for (id, pending) in pendingPermissions {
+            pending.reply.send(nil)
+            store.expirePermission(sessionID: id)
+        }
+        pendingPermissions.removeAll()
+        publish()
     }
 
     /// Sends the island's answer to the waiting hook.
@@ -74,7 +82,9 @@ final class AgentMonitor {
         }
         pendingPermissions.removeValue(forKey: event.sessionKey)?.reply.send(nil)
         let requestID =
-            event.kind == .permissionRequest && model.settings.answerPermissions ? UUID() : nil
+            event.kind == .permissionRequest && model.settings.answerPermissions
+                && !model.settings.privacyMode
+            ? UUID() : nil
         store.apply(event, at: Date(), permissionID: requestID)
         if let requestID {
             wait(

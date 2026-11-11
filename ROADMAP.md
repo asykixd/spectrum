@@ -30,7 +30,8 @@
 - [x] Keyboard control: Return allows once, Escape denies, arrows move through sessions
 - [x] Pulse again when an agent has waited longer than a set time
 - [x] Daily and five-hour estimated cost warnings and today's Claude Code session costs in the list
-- [ ] Respect Focus and screen sharing: no pulses, no session content
+- [x] Hide agent alerts and session content with manual privacy mode
+- [ ] Automatically follow Focus and screen sharing when supported by the app's capabilities and macOS APIs
 - [ ] Pill fallback on displays without a notch
 - [ ] Snapshot tests from `preview` renders
 - [ ] Fuzz tests for the transcript, usage, now playing and chat parsers

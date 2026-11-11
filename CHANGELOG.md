@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-11-12
+
 ### Added
 
 - Allow or deny Claude Code permission requests from the island: hover the warning to see the
@@ -22,6 +24,21 @@ All notable changes to this project are documented here. The format follows
   prompt, and it opens in Terminal.
 - Boss tab: today's cost at API prices, tokens, time agents worked and the current five-hour
   window, with a row per project showing its time, cost and last prompt.
+- Track local Codex, Cursor and GitHub Copilot sessions in the list and office. Cursor and Copilot
+  report activity and do not handle approvals in Spectrum.
+- Jump to the original Terminal tab from a session and reply to the currently open Claude desktop
+  chat from the panel.
+- Navigate the focused agent panel with the keyboard, answer permission requests, and allow an
+  exact Claude Code command for one project when Claude offers a local rule.
+- Get one follow-up reminder for acknowledged requests and see the waiting-agent count in the
+  expanded player.
+- Set daily and five-hour cost warnings and see estimated Claude Code cost per session.
+- Enable playback controls for supported Safari, Chrome and QuickTime media, or drive the compact
+  waveform from system audio on macOS 14.2 or later.
+- Open Spectrum at login, hide agent details manually, and use a floating island on displays
+  without a hardware notch.
+- Run `Spectrum diag` to check hook installation, the agent socket and recent event types.
+- Download a universal disk image or ZIP from GitHub Releases.
 
 ### Changed
 
@@ -30,6 +47,16 @@ All notable changes to this project are documented here. The format follows
   you, and a small checkmark that stays for three seconds instead of 1.6.
 - Agent signals no longer hide the playing music: the icon rides on the artwork as a badge and
   the outline blinks around the live activity.
+- Read appended transcript records on demand, cache usage reports and bound artwork and lyrics
+  caches.
+- Reduce background polling and pause office animation when the room is empty or Reduce Motion
+  is enabled.
+
+### Fixed
+
+- Avoid accidental double-tap shortcut triggers and keep AppleScript objects on their script queue.
+- Bound hook wait times when the app is unavailable or unresponsive and handle malformed or
+  out-of-range event values.
 
 ## [1.0.0] - 2026-10-27
 
@@ -56,4 +83,6 @@ First release.
 - Universal `Spectrum.app` (Apple silicon and Intel) with a Clawd icon, built by
   `scripts/bundle.sh` and attached to GitHub releases by CI.
 
+[Unreleased]: https://github.com/asykixd/spectrum/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/asykixd/spectrum/compare/v1.0.0...v1.0.9
 [1.0.0]: https://github.com/asykixd/spectrum/releases/tag/v1.0.0

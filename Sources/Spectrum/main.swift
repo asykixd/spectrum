@@ -76,6 +76,23 @@ case "preview":
         }
     }
 
+case "benchmark-usage":
+    guard arguments.count <= 2, let records = Int(arguments.dropFirst().first ?? "25000"),
+        (1...500_000).contains(records)
+    else { fail("usage: Spectrum benchmark-usage [record count, 1–500000]") }
+    do {
+        let result = try UsageBenchmark.run(records: records)
+        for (label, sample) in [
+            ("cold", result.cold), ("unchanged", result.unchanged), ("append", result.append),
+        ] {
+            print(
+                "\(label) \(String(format: "%.2f", sample.milliseconds)) ms (\(sample.entries) usage entries)"
+            )
+        }
+    } catch {
+        fail("usage benchmark failed: \(error)")
+    }
+
 case nil:
     MainActor.assumeIsolated {
         let app = NSApplication.shared
@@ -86,5 +103,7 @@ case nil:
     }
 
 case let other?:
-    fail("unknown command \(other); expected hook, install-hooks, uninstall-hooks or preview")
+    fail(
+        "unknown command \(other); expected hook, install-hooks, uninstall-hooks, preview or benchmark-usage"
+    )
 }

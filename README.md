@@ -208,6 +208,7 @@ The app binary doubles as a small CLI:
 | `Spectrum uninstall-hooks [claude\|codex]` | Remove only Spectrum's hooks |
 | `Spectrum hook` | Called by the hooks; forwards the event on stdin to the app |
 | `Spectrum preview <dir>` | Render every state with demo data to PNG files (the screenshots above) |
+| `Spectrum benchmark-usage [record count]` | Time cold, unchanged and append scans on synthetic transcripts |
 
 The binary lives at `/Applications/Spectrum.app/Contents/MacOS/Spectrum`.
 

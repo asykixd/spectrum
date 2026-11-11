@@ -1,8 +1,10 @@
 import Foundation
+import os
 
 /// Reads every Claude Code transcript under `~/.claude/projects`, subagents included, and keeps
 /// what it read so the next scan only parses lines appended since.
 public struct UsageScanner: Sendable {
+    private static let signposter = OSSignposter(subsystem: "dev.spectrum", category: "usage")
     private struct FileState: Sendable {
         var reader = JSONLReader()
         var log = UsageLog()
@@ -43,6 +45,8 @@ public struct UsageScanner: Sendable {
 
     /// Usage from transcripts touched since `date`; older files can't hold newer lines.
     public mutating func scan(since date: Date) -> UsageLog {
+        let interval = Self.signposter.beginInterval("Scan transcripts")
+        defer { Self.signposter.endInterval("Scan transcripts", interval) }
         restore()
         let keys: [URLResourceKey] = [.contentModificationDateKey]
         guard

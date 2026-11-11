@@ -37,6 +37,7 @@ public struct OfficeLayout: Sendable {
     public let hiddenCode: Int
     public let hiddenChats: Int
     public let hiddenAFK: Int
+    public var hasAnimatedOccupants: Bool { !placements.isEmpty }
 
     public init(sessions: [AgentSession]) {
         let groups = SessionGroups(sessions)

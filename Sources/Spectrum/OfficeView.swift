@@ -6,17 +6,22 @@ import SwiftUI
 /// hovering highlights one, clicking opens its conversation.
 struct OfficeView: View {
     let model: NotchModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         let layout = OfficeLayout(sessions: model.sessions)
-        // Pixel art reads fine at 8 fps, and the office redraws hundreds of rects per frame.
-        TimelineView(.animation(minimumInterval: 1.0 / 8)) { timeline in
-            Canvas { context, size in
-                OfficeScene(
-                    layout: layout, date: model.clockOverride ?? timeline.date,
-                    hoveredID: model.officeHoverID,
-                    style: model.settings.characters
-                ).draw(in: context, size: size)
+        let animate = layout.hasAnimatedOccupants && !reduceMotion && !model.renderingStill
+        GeometryReader { proxy in
+            let room = OfficeRoomCache.shared.image(size: proxy.size, scale: max(displayScale, 2))
+            if animate {
+                TimelineView(.animation(minimumInterval: 1.0 / 8)) { timeline in
+                    scene(layout, date: timeline.date, room: room, animate: true)
+                }
+            } else {
+                TimelineView(.everyMinute) { timeline in
+                    scene(layout, date: timeline.date, room: room, animate: false)
+                }
             }
         }
         .overlay {
@@ -36,6 +41,18 @@ struct OfficeView: View {
         }
     }
 
+    private func scene(_ layout: OfficeLayout, date: Date, room: CGImage?, animate: Bool)
+        -> some View
+    {
+        Canvas { context, size in
+            OfficeScene(
+                layout: layout, date: model.clockOverride ?? date,
+                hoveredID: model.officeHoverID, style: model.settings.characters,
+                animate: animate
+            ).draw(in: context, size: size, room: room)
+        }
+    }
+
     private func hover(_ phase: HoverPhase, layout: OfficeLayout, size: CGSize) {
         var id: String?
         if case .active(let location) = phase {
@@ -44,6 +61,27 @@ struct OfficeView: View {
         guard id != model.officeHoverID else { return }
         model.officeHoverID = id
         if id == nil { NSCursor.arrow.set() } else { NSCursor.pointingHand.set() }
+    }
+}
+
+@MainActor
+private final class OfficeRoomCache {
+    static let shared = OfficeRoomCache()
+    private var size = CGSize.zero
+    private var scale: CGFloat = 0
+    private var room: CGImage?
+
+    func image(size: CGSize, scale: CGFloat) -> CGImage? {
+        guard size.width > 0, size.height > 0 else { return nil }
+        if self.size == size, self.scale == scale, let room { return room }
+        let layer = Canvas { context, size in OfficeScene.drawRoom(in: context, size: size) }
+            .frame(width: size.width, height: size.height)
+        let renderer = ImageRenderer(content: layer)
+        renderer.scale = scale
+        self.size = size
+        self.scale = scale
+        room = renderer.cgImage
+        return room
     }
 }
 
@@ -72,16 +110,22 @@ struct OfficeScene {
     let date: Date
     var hoveredID: String?
     var style: SpectrumSettings.CharacterStyle = .clawd
+    var animate = true
 
-    private var time: Double { date.timeIntervalSinceReferenceDate }
+    private var time: Double { animate ? date.timeIntervalSinceReferenceDate : 0 }
 
-    func draw(in context: GraphicsContext, size: CGSize) {
+    func draw(in context: GraphicsContext, size: CGSize, room: CGImage?) {
         let (pixel, origin) = OfficeLayout.fit(in: size)
         let canvas = PixelCanvas(context: context, pixel: pixel, origin: origin)
 
-        drawWall(canvas)
-        drawFloor(canvas)
-        drawZones(canvas)
+        if let room {
+            context.draw(Image(decorative: room, scale: 1), in: CGRect(origin: .zero, size: size))
+        } else {
+            Self.drawRoom(in: context, size: size)
+        }
+        drawWindow(canvas, x: 8)
+        drawWindow(canvas, x: 126)
+        drawClock(canvas, centerX: 80, centerY: 10)
 
         let taken = layout.placements.filter { $0.zone == .desk }.map(\.origin)
         for slot in OfficeLayout.deskSlots where !taken.contains(slot) {
@@ -124,16 +168,16 @@ struct OfficeScene {
         notes.draw()
 
         if layout.hiddenCode > 0 {
-            label(canvas, "+\(layout.hiddenCode) at work", x: 50, y: 76, size: 2.2)
+            Self.label(canvas, "+\(layout.hiddenCode) at work", x: 50, y: 76, size: 2.2)
         }
         if layout.hiddenChats > 0 {
-            label(canvas, "+\(layout.hiddenChats) chats", x: 150, y: 27, size: 2)
+            Self.label(canvas, "+\(layout.hiddenChats) chats", x: 150, y: 27, size: 2)
         }
         if layout.hiddenAFK > 0 {
-            label(canvas, "+\(layout.hiddenAFK) AFK", x: 150, y: Self.loungeY + 1, size: 2)
+            Self.label(canvas, "+\(layout.hiddenAFK) AFK", x: 150, y: Self.loungeY + 1, size: 2)
         }
         if layout.placements.isEmpty {
-            label(canvas, "No agents at work", x: 50, y: 34, size: 3, opacity: 0.75)
+            Self.label(canvas, "No agents at work", x: 50, y: 34, size: 3, opacity: 0.75)
         }
     }
 
@@ -243,7 +287,7 @@ struct OfficeScene {
                 canvas, x: x + 6, headTop: headTop, activity: .idle,
                 seed: Double(session.appearanceSeed % 1000))
             // Inside the rug, clear of the office's rounded bottom edge.
-            label(
+            Self.label(
                 canvas, String(session.projectName.prefix(8)), x: x + 4.5, y: y + 19.5,
                 size: 1.9)
         }
@@ -317,18 +361,19 @@ struct OfficeScene {
 
     // MARK: Room
 
-    private func drawWall(_ canvas: PixelCanvas) {
+    static func drawRoom(in context: GraphicsContext, size: CGSize) {
+        let (pixel, origin) = OfficeLayout.fit(in: size)
+        let canvas = PixelCanvas(context: context, pixel: pixel, origin: origin)
         canvas.fill(0, 0, Self.columns, Self.wallHeight, Color(hex: 0x2A3152))
         for x in stride(from: 4.0, to: Self.columns, by: 10) {
             canvas.fill(x, 0, 1, Self.wallHeight - 1, Color(hex: 0x313961))
         }
         canvas.fill(0, Self.wallHeight - 1, Self.columns, 1, Color(hex: 0x1B2038))
 
-        drawWindow(canvas, x: 8)
-        drawWindow(canvas, x: 126)
-        drawClock(canvas, centerX: 80, centerY: 10)
         drawPoster(canvas, x: 50, art: .mountains)
         drawPoster(canvas, x: 98, art: .chart)
+        drawFloor(canvas)
+        drawZones(canvas)
     }
 
     private func drawWindow(_ canvas: PixelCanvas, x: Double) {
@@ -400,7 +445,7 @@ struct OfficeScene {
 
     private enum PosterArt { case mountains, chart }
 
-    private func drawPoster(_ canvas: PixelCanvas, x: Double, art: PosterArt) {
+    private static func drawPoster(_ canvas: PixelCanvas, x: Double, art: PosterArt) {
         let y = 5.0
         canvas.fill(x, y, 12, 11, Color(hex: 0xE8E4D8))
         switch art {
@@ -419,7 +464,7 @@ struct OfficeScene {
         }
     }
 
-    private func drawFloor(_ canvas: PixelCanvas) {
+    private static func drawFloor(_ canvas: PixelCanvas) {
         let top = Self.wallHeight
         canvas.fill(0, top, Self.columns, Self.rows - top, Color(hex: 0x8B5E3C))
         var band = 0.0
@@ -436,7 +481,7 @@ struct OfficeScene {
         }
     }
 
-    private func drawZones(_ canvas: PixelCanvas) {
+    private static func drawZones(_ canvas: PixelCanvas) {
         let top = Self.wallHeight
         let x = Self.partitionX
         // Carpet in the meeting room, a rug in the lounge.
@@ -455,7 +500,7 @@ struct OfficeScene {
 
         // Door sign for the meeting room, under the window.
         canvas.fill(x + 26, top - 4, 22, 3, Color(hex: 0xE8E4D8))
-        label(canvas, "MEETING", x: x + 37, y: top - 2.5, size: 1.8, opacity: 1, color: .black)
+        Self.label(canvas, "MEETING", x: x + 37, y: top - 2.5, size: 1.8, opacity: 1, color: .black)
     }
 
     private func drawEmptyDesk(_ canvas: PixelCanvas, x: Double, top: Double) {
@@ -509,7 +554,7 @@ struct OfficeScene {
 
         notes.add {
             drawBubble(canvas, x: characterX + 6, headTop: headTop, activity: activity, seed: seed)
-            label(
+            Self.label(
                 canvas, String(session.projectName.prefix(14)), x: x + Self.deskWidth / 2,
                 y: top + 12)
         }
@@ -674,7 +719,7 @@ struct OfficeScene {
             canvas.fill(left + 1, bottom - 4, 2, 1, accent)
         }
         if count > shown {
-            label(canvas, "+\(count - shown)", x: x + 17, y: top - 2, size: 2)
+            Self.label(canvas, "+\(count - shown)", x: x + 17, y: top - 2, size: 2)
         }
     }
 
@@ -720,7 +765,7 @@ struct OfficeScene {
             case .idle, .usingTool, .finished:
                 break
             }
-            label(
+            Self.label(
                 canvas, String(session.projectName.prefix(12)), x: x + Self.meetingWidth / 2,
                 y: top + 12)
         }
@@ -760,7 +805,7 @@ struct OfficeScene {
         }
     }
 
-    private func label(
+    private static func label(
         _ canvas: PixelCanvas, _ text: String, x: Double, y: Double, size: Double = 2.4,
         opacity: Double = 0.85, color: Color = .white
     ) {

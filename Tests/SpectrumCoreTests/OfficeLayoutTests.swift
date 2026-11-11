@@ -47,3 +47,8 @@ private func session(_ id: String, _ kind: AgentSession.Kind, _ activity: AgentA
     #expect(layout.placement(at: onDesk)?.session.id == "busy")
     #expect(layout.placement(at: onWall) == nil)
 }
+
+@Test func anEmptyOfficeCanPauseItsAnimation() {
+    #expect(!OfficeLayout(sessions: []).hasAnimatedOccupants)
+    #expect(OfficeLayout(sessions: [session("sleeping", .code, .idle)]).hasAnimatedOccupants)
+}

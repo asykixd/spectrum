@@ -229,17 +229,17 @@ enum PreviewRenderer {
             projects: [
                 .init(
                     name: "weather-app", cost: 9.85, tokens: 11_200_000,
-                    activeTime: 2 * 3600 + 50 * 60,
+                    activeTime: 10_200,
                     sessions: 2, lastPrompt: "Add a 7-day forecast screen"),
                 .init(
                     name: "billing-api", cost: 5.10, tokens: 6_300_000,
-                    activeTime: 1 * 3600 + 42 * 60,
+                    activeTime: 6_120,
                     sessions: 1, lastPrompt: "Retry failed webhooks with backoff"),
                 .init(
-                    name: "landing-page", cost: 2.31, tokens: 2_900_000, activeTime: 48 * 60,
+                    name: "landing-page", cost: 2.31, tokens: 2_900_000, activeTime: 2_880,
                     sessions: 1, lastPrompt: "Make the hero section responsive"),
                 .init(
-                    name: "dotfiles", cost: 1.16, tokens: 1_000_000, activeTime: 18 * 60,
+                    name: "dotfiles", cost: 1.16, tokens: 1_000_000, activeTime: 1_080,
                     sessions: 1, lastPrompt: "Clean up zsh aliases"),
             ],
             window: .init(

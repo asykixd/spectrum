@@ -27,7 +27,7 @@
 - [x] Bound the Spotify artists cache; cache artwork and lyrics on disk
 - [x] Signposts and a `UsageScanner` benchmark to catch performance regressions
 - [x] "Always Allow" for exact Claude Code shell rules in project-local `permissions.allow`
-- [ ] Keyboard control: Return allows, Escape denies, arrows move through sessions
+- [x] Keyboard control: Return allows once, Escape denies, arrows move through sessions
 - [ ] Pulse again when an agent has waited longer than a set time
 - [ ] Spend limits for the day and the five-hour window, cost per session in the list
 - [ ] Respect Focus and screen sharing: no pulses, no session content

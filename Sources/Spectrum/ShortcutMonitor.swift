@@ -10,6 +10,7 @@ final class ShortcutMonitor {
     private let modifier: () -> SpectrumSettings.Shortcut
     private let onDoubleTap: () -> Void
     private let onEscape: () -> Void
+    private let onLocalKey: (NSEvent) -> Bool
     private let onClick: (CGPoint) -> Void
     private var detector = DoubleTapDetector()
     private var modifierDown = false
@@ -18,43 +19,43 @@ final class ShortcutMonitor {
 
     init(
         modifier: @escaping () -> SpectrumSettings.Shortcut, onDoubleTap: @escaping () -> Void,
-        onEscape: @escaping () -> Void, onClick: @escaping (CGPoint) -> Void
+        onEscape: @escaping () -> Void, onLocalKey: @escaping (NSEvent) -> Bool,
+        onClick: @escaping (CGPoint) -> Void
     ) {
         self.modifier = modifier
         self.onDoubleTap = onDoubleTap
         self.onEscape = onEscape
+        self.onLocalKey = onLocalKey
         self.onClick = onClick
     }
 
     func start() {
         let keys: NSEvent.EventTypeMask = [.flagsChanged, .keyDown]
         let clicks: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
-        let handle: (NSEvent) -> Void = { [weak self] event in
-            MainActor.assumeIsolated { self?.handle(event) }
+        let handle: (NSEvent, Bool) -> Bool = { [weak self] event, local in
+            MainActor.assumeIsolated { self?.handle(event, local: local) ?? false }
         }
         if let global = NSEvent.addGlobalMonitorForEvents(
-            matching: keys.union(clicks), handler: handle)
+            matching: keys.union(clicks), handler: { _ = handle($0, false) })
         {
             monitors.append(global)
         }
         if let local = NSEvent.addLocalMonitorForEvents(
             matching: keys.union(clicks),
-            handler: { event in
-                handle(event)
-                return event
-            })
+            handler: { event in handle(event, true) ? nil : event })
         {
             monitors.append(local)
         }
     }
 
-    private func handle(_ event: NSEvent) {
+    private func handle(_ event: NSEvent, local: Bool) -> Bool {
         switch event.type {
         case .leftMouseDown, .rightMouseDown:
             _ = detector.handle(.other, at: event.timestamp)
             onClick(NSEvent.mouseLocation)
         case .keyDown:
             _ = detector.handle(.other, at: event.timestamp)
+            if local && onLocalKey(event) { return true }
             if event.keyCode == Self.escapeKeyCode { onEscape() }
         case .flagsChanged:
             if Self.inputCount() != lastInputCount {
@@ -83,6 +84,7 @@ final class ShortcutMonitor {
         default:
             break
         }
+        return false
     }
 
     /// System-wide count of key presses, clicks and scrolls. The global monitor misses keyDown

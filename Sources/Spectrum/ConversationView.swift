@@ -38,6 +38,12 @@ struct ConversationView: View {
                 Spacer()
             }
 
+            if let prompt = session.permission, prompt.requestID != nil {
+                PermissionCard(model: model, session: session, prompt: prompt)
+                    .padding(10)
+                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+            }
+
             if messages.isEmpty {
                 Text(
                     session.transcriptPath == nil

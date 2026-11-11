@@ -182,9 +182,14 @@ struct SessionsListView: View {
                         .foregroundStyle(Color(hex: 0xF5B544))
                 }
                 // Scroll only when the rows don't fit, so a short list sits still like a widget.
-                ViewThatFits(in: .vertical) {
-                    sections.frame(maxHeight: .infinity, alignment: .top)
-                    ScrollView { sections }.scrollIndicators(.never)
+                ScrollViewReader { proxy in
+                    ViewThatFits(in: .vertical) {
+                        sections.frame(maxHeight: .infinity, alignment: .top)
+                        ScrollView { sections }.scrollIndicators(.never)
+                    }
+                    .onChange(of: model.keyboardSessionID) { _, id in
+                        if let id { proxy.scrollTo(id, anchor: .center) }
+                    }
                 }
             }
         }
@@ -195,7 +200,7 @@ struct SessionsListView: View {
             ForEach(AgentProvider.allCases, id: \.self) { provider in
                 section(
                     provider.name, symbol: "terminal",
-                    sessions: groups.code.filter { $0.provider == provider })
+                    sessions: groups.code(for: provider))
             }
             section("Chats", symbol: "bubble.left.and.bubble.right", sessions: groups.chats)
             section("AFK", symbol: "moon.zzz", sessions: groups.afk)
@@ -215,6 +220,7 @@ struct SessionsListView: View {
                     SessionRow(
                         session: session, style: model.settings.characters,
                         hovering: model.hoveredSessionID == session.id,
+                        keyboardSelected: model.keyboardSessionID == session.id,
                         hover: { inside in
                             if inside {
                                 model.hoveredSessionID = session.id
@@ -226,7 +232,9 @@ struct SessionsListView: View {
                         openTerminal: {
                             if let tab = session.terminalTab { model.onOpenTerminal(tab) }
                         },
-                        dismiss: { withAnimation(.snappy) { model.dismiss(session) } })
+                        dismiss: { withAnimation(.snappy) { model.dismiss(session) } }
+                    )
+                    .id(session.id)
                 }
             }
         }
@@ -279,6 +287,7 @@ private struct SessionRow: View {
     let session: AgentSession
     let style: SpectrumSettings.CharacterStyle
     let hovering: Bool
+    let keyboardSelected: Bool
     let hover: (Bool) -> Void
     let open: () -> Void
     let openTerminal: () -> Void
@@ -367,7 +376,10 @@ private struct SessionRow: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(isWaiting ? Color(hex: 0xF59E0B, opacity: 0.5) : .clear)
+                .strokeBorder(
+                    keyboardSelected
+                        ? .white.opacity(0.72)
+                        : isWaiting ? Color(hex: 0xF59E0B, opacity: 0.5) : .clear)
         )
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .onTapGesture(perform: open)

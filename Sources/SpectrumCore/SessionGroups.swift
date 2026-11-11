@@ -18,4 +18,12 @@ public struct SessionGroups: Equatable, Sendable {
     }
 
     public var isEmpty: Bool { code.isEmpty && chats.isEmpty && afk.isEmpty }
+
+    public func code(for provider: AgentProvider) -> [AgentSession] {
+        code.filter { $0.provider == provider }
+    }
+
+    public var listOrder: [AgentSession] {
+        AgentProvider.allCases.flatMap(code(for:)) + chats + afk
+    }
 }

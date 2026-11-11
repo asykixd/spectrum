@@ -129,8 +129,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let shortcuts = ShortcutMonitor(
             modifier: { [weak model] in model?.settings.shortcut ?? .doubleCommand },
-            onDoubleTap: { [weak model] in model?.agentsOpen.toggle() },
+            onDoubleTap: { [weak self] in self?.toggleAgentsPanel() },
             onEscape: { [weak model] in model?.agentsOpen = false },
+            onLocalKey: { [weak self] event in self?.handlePanelKey(event) ?? false },
             onClick: { [weak model] location in
                 guard let model, model.agentsOpen else { return }
                 let visible = NotchLayout.visibleRect(for: .agents, geometry: model.geometry)
@@ -146,6 +147,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         model.onModeChange = { [weak self] mode in
+            if mode != .agents, mode != .permission, self?.panel?.isKeyWindow == true {
+                self?.panel?.resignKey()
+            }
             self?.updatePointerTracking(for: mode, at: NSEvent.mouseLocation)
         }
         // Panel-only monitors sleep while it is closed instead of ticking to check.
@@ -171,6 +175,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         waveform?.setActive(false)
         agents?.stop()
+    }
+
+    private func toggleAgentsPanel() {
+        guard let model else { return }
+        model.agentsOpen.toggle()
+        if model.agentsOpen { panel?.makeKey() }
+    }
+
+    private func handlePanelKey(_ event: NSEvent) -> Bool {
+        guard let panel, panel.isKeyWindow, event.window === panel,
+            event.modifierFlags.intersection([.command, .shift, .option, .control]).isEmpty,
+            let key = PanelKey(rawValue: event.keyCode)
+        else { return false }
+        return model?.handlePanelKey(key, repeating: event.isARepeat) ?? false
     }
 
     /// While the island is hidden there is nothing to hover, so the pointer poll stops entirely

@@ -68,6 +68,7 @@ final class NotchModel {
     var replyingSessionIDs: Set<String> = []
     /// Row under the pointer in the sessions list; it reveals the remove button.
     var hoveredSessionID: String?
+    var keyboardSessionID: String?
     var terminalError: String?
     /// Agent under the pointer in the office.
     var officeHoverID: String?
@@ -75,7 +76,10 @@ final class NotchModel {
     var agentsOpen = false {
         didSet {
             if agentsOpen { attention.acknowledge() }
-            if !agentsOpen { terminalError = nil }
+            if !agentsOpen {
+                terminalError = nil
+                keyboardSessionID = nil
+            }
             updateMode()
             if agentsOpen != oldValue { onPanelChange() }
         }
@@ -238,6 +242,34 @@ final class NotchModel {
     func answerPermission(_ decision: PermissionDecision, for session: AgentSession) {
         guard let id = session.permission?.requestID else { return }
         onPermission(session.id, id, decision)
+    }
+
+    func handlePanelKey(_ key: PanelKey, repeating: Bool) -> Bool {
+        let approval: AgentSession? =
+            mode == .permission
+            ? permissionRequest?.session
+            : agentsOpen && tab == .sessions ? selectedSession : nil
+        if let approval, approval.permission?.requestID != nil,
+            let decision = key.permissionDecision
+        {
+            if !repeating { answerPermission(decision, for: approval) }
+            return true
+        }
+        guard agentsOpen, tab == .sessions, selectedSessionID == nil, !newSessionOpen else {
+            return false
+        }
+        let order = SessionGroups(sessions).listOrder
+        if let id = key.move(in: order.map(\.id), from: keyboardSessionID) {
+            keyboardSessionID = id
+            return true
+        }
+        if key == .enter || key == .keypadEnter,
+            let session = order.first(where: { $0.id == keyboardSessionID })
+        {
+            if !repeating { open(session) }
+            return true
+        }
+        return false
     }
 
     private func updateMode() {

@@ -22,3 +22,5 @@ jobs:
         run: swift build
       - name: Test
         run: swift test
+      - name: Check preview snapshots
+        run: .build/debug/Spectrum preview-snapshots Tests/PreviewSnapshots.json

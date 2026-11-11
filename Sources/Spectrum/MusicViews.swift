@@ -34,12 +34,15 @@ struct WaveformView: View {
     var barCount = 4
     var height: CGFloat = 14
     var levels: [Double]?
+    var still = false
 
     var body: some View {
         // 20 fps reads as smooth for bouncing bars at a fraction of the cost of 60.
-        TimelineView(.animation(minimumInterval: 1.0 / 20, paused: !isPlaying || levels != nil)) {
+        TimelineView(
+            .animation(minimumInterval: 1.0 / 20, paused: !isPlaying || levels != nil || still)
+        ) {
             timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
+            let time = still ? 0 : timeline.date.timeIntervalSinceReferenceDate
             HStack(alignment: .center, spacing: 2) {
                 ForEach(0..<barCount, id: \.self) { index in
                     Capsule()
@@ -68,7 +71,7 @@ struct CompactMusicView: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 20, paused: !needsYou)) { timeline in
-            let blink = SignalView.blink(at: timeline.date)
+            let blink = model.renderingStill ? 0.75 : SignalView.blink(at: timeline.date)
             HStack(spacing: 0) {
                 ArtworkView(image: model.artwork, size: 22, radius: 6)
                     .overlay(alignment: .bottomTrailing) {
@@ -82,7 +85,7 @@ struct CompactMusicView: View {
                 Spacer(minLength: 0)
                 WaveformView(
                     isPlaying: model.nowPlaying?.isPlaying ?? false, color: model.accent,
-                    levels: model.waveformLevels)
+                    levels: model.waveformLevels, still: model.renderingStill)
             }
             .padding(.horizontal, 10)
             .frame(height: model.geometry.notch.height)

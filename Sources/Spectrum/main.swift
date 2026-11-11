@@ -93,6 +93,19 @@ case "benchmark-usage":
         fail("usage benchmark failed: \(error)")
     }
 
+case "preview-snapshots":
+    let update = arguments.dropFirst(2).first == "--update"
+    guard let path = arguments.dropFirst().first, arguments.count == (update ? 3 : 2) else {
+        fail("usage: Spectrum preview-snapshots <reference> [--update]")
+    }
+    MainActor.assumeIsolated {
+        do {
+            try PreviewSnapshots.run(reference: URL(fileURLWithPath: path), update: update)
+        } catch {
+            fail("preview snapshot check failed: \(error)")
+        }
+    }
+
 case nil:
     MainActor.assumeIsolated {
         let app = NSApplication.shared
@@ -104,6 +117,6 @@ case nil:
 
 case let other?:
     fail(
-        "unknown command \(other); expected hook, install-hooks, uninstall-hooks, preview or benchmark-usage"
+        "unknown command \(other); expected hook, install-hooks, uninstall-hooks, preview, benchmark-usage or preview-snapshots"
     )
 }

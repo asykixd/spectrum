@@ -11,7 +11,7 @@ struct SignalView: View {
         if let signal = model.signal {
             TimelineView(.animation(minimumInterval: 1.0 / 20, paused: !signal.isNeedsYou)) {
                 timeline in
-                let blink = Self.blink(at: timeline.date)
+                let blink = model.renderingStill ? 0.75 : Self.blink(at: timeline.date)
                 HStack(spacing: 0) {
                     Icon(signal: signal, blink: blink, size: 11)
                         .frame(width: NotchLayout.signalEarWidth)

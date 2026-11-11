@@ -1,7 +1,7 @@
 import Foundation
 import SpectrumCore
 
-/// Totals up Claude Code transcripts for the boss tab, only while that tab is on screen.
+/// Totals up Claude Code transcripts for the Boss tab and visible session costs.
 @MainActor
 final class BossMonitor {
     private let model: NotchModel
@@ -16,9 +16,13 @@ final class BossMonitor {
         self.model = model
     }
 
-    /// Scans only while the boss tab is on screen; opening it shows fresh numbers right away.
+    /// Scans only while the panel is showing a cost.
     func update() {
-        guard model.agentsOpen, model.tab == .boss else {
+        let showsSessions =
+            model.tab == .sessions && model.selectedSessionID == nil
+            && !model.newSessionOpen
+            && model.sessions.contains { $0.kind == .code && $0.provider == .claude }
+        guard model.agentsOpen, model.tab == .boss || showsSessions else {
             timer?.invalidate()
             timer = nil
             return

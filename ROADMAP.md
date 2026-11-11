@@ -29,7 +29,7 @@
 - [x] "Always Allow" for exact Claude Code shell rules in project-local `permissions.allow`
 - [x] Keyboard control: Return allows once, Escape denies, arrows move through sessions
 - [x] Pulse again when an agent has waited longer than a set time
-- [ ] Spend limits for the day and the five-hour window, cost per session in the list
+- [x] Daily and five-hour estimated cost warnings and today's Claude Code session costs in the list
 - [ ] Respect Focus and screen sharing: no pulses, no session content
 - [ ] Pill fallback on displays without a notch
 - [ ] Snapshot tests from `preview` renders

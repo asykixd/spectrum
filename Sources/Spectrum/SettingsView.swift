@@ -105,6 +105,23 @@ struct SettingsView: View {
                     }
                 }
             }
+            Section("Usage Estimates") {
+                TextField(
+                    "Daily warning (USD)",
+                    value: Binding(
+                        get: { model.settings.dailySpendLimit },
+                        set: { model.settings.dailySpendLimit = UsageBudget($0).limit }),
+                    format: .number.precision(.fractionLength(0...2)))
+                TextField(
+                    "Five-hour warning (USD)",
+                    value: Binding(
+                        get: { model.settings.windowSpendLimit },
+                        set: { model.settings.windowSpendLimit = UsageBudget($0).limit }),
+                    format: .number.precision(.fractionLength(0...2)))
+                Text("Based on estimated Claude Code API costs. Set a warning to 0 to turn it off.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section("Agent Hooks") {
                 ForEach(AgentProvider.allCases, id: \.self) { provider in
                     LabeledContent(provider.name) {
@@ -135,7 +152,6 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 460)
-        .fixedSize(horizontal: false, vertical: true)
         .onReceive(
             NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
         ) { _ in

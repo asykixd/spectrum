@@ -33,6 +33,8 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     public var alertWhenNeeded = true
     /// The delay before a looked-at request pulses once more, or zero to disable reminders.
     public var waitReminderSeconds = 30
+    public var dailySpendLimit = 0.0
+    public var windowSpendLimit = 0.0
     /// Flash a checkmark when a task finishes.
     public var flashWhenDone = true
     /// Let Claude Code permission requests be allowed or denied from the island.
@@ -80,6 +82,12 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         waitReminderSeconds =
             try container.decodeIfPresent(Int.self, forKey: .waitReminderSeconds)
             ?? defaults.waitReminderSeconds
+        dailySpendLimit =
+            try container.decodeIfPresent(Double.self, forKey: .dailySpendLimit)
+            ?? defaults.dailySpendLimit
+        windowSpendLimit =
+            try container.decodeIfPresent(Double.self, forKey: .windowSpendLimit)
+            ?? defaults.windowSpendLimit
         flashWhenDone =
             try container.decodeIfPresent(Bool.self, forKey: .flashWhenDone)
             ?? defaults.flashWhenDone

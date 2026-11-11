@@ -60,7 +60,8 @@ desks, talk in the meeting room and doze on the sofa.
 - **Boss**: today's agent work at a glance: what it would cost at API prices, tokens, how long
   agents worked, the current five-hour usage window, and per project the time, cost and the last
   thing you asked for. Read from Claude Code's transcripts, subagents included, only while the tab
-  is open.
+  or sessions list is open. Configure daily and five-hour cost warnings in Settings. Session rows
+  show today's estimated Claude Code API cost.
 
 | Sessions | Conversation |
 | --- | --- |

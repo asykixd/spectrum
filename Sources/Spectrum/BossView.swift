@@ -4,21 +4,29 @@ import SwiftUI
 /// The boss's desk: what today's agent work took in time and money, project by project.
 struct BossView: View {
     let report: BossReport?
+    let dailyBudget: UsageBudget
+    let windowBudget: UsageBudget
 
     var body: some View {
         if let report {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    tile("Spent today", value: money(report.todayCost), note: "at API prices")
+                    spendTile(
+                        "Spent today", cost: report.todayCost, budget: dailyBudget,
+                        note: "at API prices")
                     tile("Tokens", value: tokens(report.todayTokens), note: "today")
                     tile("Agents worked", value: duration(report.activeTime), note: "today")
                     if let window = report.window {
-                        tile(
-                            "5-hour window", value: money(window.cost),
+                        spendTile(
+                            "5-hour window", cost: window.cost, budget: windowBudget,
                             note: "resets \(window.end.formatted(date: .omitted, time: .shortened))"
                         )
                     } else {
-                        tile("5-hour window", value: "—", note: "starts with the next prompt")
+                        tile(
+                            "5-hour window", value: "—",
+                            note: windowBudget.limit > 0
+                                ? "Limit \(money(windowBudget.limit))"
+                                : "starts with the next prompt")
                     }
                 }
                 if report.projects.isEmpty {
@@ -49,14 +57,26 @@ struct BossView: View {
         }
     }
 
-    private func tile(_ title: String, value: String, note: String) -> some View {
+    private func spendTile(_ title: String, cost: Double, budget: UsageBudget, note: String)
+        -> some View
+    {
+        let reached = budget.reached(by: cost)
+        let caption =
+            reached ? "Limit reached" : budget.limit > 0 ? "Limit \(money(budget.limit))" : note
+        return tile(title, value: money(cost), note: caption, highlighted: reached)
+            .help(budget.limit > 0 ? "Estimated API cost · limit \(money(budget.limit))" : note)
+    }
+
+    private func tile(_ title: String, value: String, note: String, highlighted: Bool = false)
+        -> some View
+    {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.5))
             Text(value)
                 .font(.system(size: 18, weight: .bold).monospacedDigit())
-                .foregroundStyle(.white)
+                .foregroundStyle(highlighted ? Color(hex: 0xF5B544) : .white)
             Text(note)
                 .font(.system(size: 9))
                 .foregroundStyle(.white.opacity(0.4))

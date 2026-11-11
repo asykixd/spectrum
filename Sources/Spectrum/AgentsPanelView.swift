@@ -46,7 +46,10 @@ struct AgentsPanelView: View {
                     OfficeView(model: model)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 case .boss:
-                    BossView(report: model.bossReport)
+                    BossView(
+                        report: model.bossReport,
+                        dailyBudget: UsageBudget(model.settings.dailySpendLimit),
+                        windowBudget: UsageBudget(model.settings.windowSpendLimit))
                 }
             }
             .padding(.horizontal, 16)
@@ -221,6 +224,8 @@ struct SessionsListView: View {
                         session: session, style: model.settings.characters,
                         hovering: model.hoveredSessionID == session.id,
                         keyboardSelected: model.keyboardSessionID == session.id,
+                        cost: session.kind == .code && session.provider == .claude
+                            ? model.bossReport?.sessionCosts[session.id] : nil,
                         hover: { inside in
                             if inside {
                                 model.hoveredSessionID = session.id
@@ -288,6 +293,7 @@ private struct SessionRow: View {
     let style: SpectrumSettings.CharacterStyle
     let hovering: Bool
     let keyboardSelected: Bool
+    let cost: Double?
     let hover: (Bool) -> Void
     let open: () -> Void
     let openTerminal: () -> Void
@@ -327,6 +333,12 @@ private struct SessionRow: View {
             }
             .lineLimit(1)
             Spacer()
+            if let cost {
+                Text(cost.formatted(.currency(code: "USD").precision(.fractionLength(2))))
+                    .font(.system(size: 10, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.55))
+                    .help("Today's estimated API cost")
+            }
             if let place = session.kind == .chat ? "Claude app" : session.cwd.map(abbreviated) {
                 Text(place)
                     .font(.system(size: 10, design: .monospaced))

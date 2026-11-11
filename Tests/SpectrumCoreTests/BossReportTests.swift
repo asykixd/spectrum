@@ -168,3 +168,21 @@ private func date(_ text: String) -> Date {
     #expect(updated.activity.count == 3)
     #expect(updated.entries.map(\.messageID) == ["m1"])
 }
+
+@Test func sessionCostsOnlyIncludeUniqueMessagesFromToday() {
+    let one = assistant("m1", at: "2026-10-28T10:00:00Z", output: 200)
+    let yesterday = assistant("old", at: "2026-10-27T23:00:00Z", output: 100)
+    let report = BossReport(
+        log: UsageLog.parse([one, yesterday, one].joined(separator: "\n")),
+        now: date("2026-10-28T12:00:00Z"), calendar: utc)
+    #expect(report.sessionCosts.count == 1)
+    #expect(report.sessionCosts.values.first == report.todayCost)
+    #expect(report.todayCost > 0)
+}
+
+@Test func estimatedUsageBudgetDoesNotTriggerWhenDisabled() {
+    #expect(!UsageBudget(0).reached(by: 10))
+    #expect(!UsageBudget(.infinity).reached(by: 10))
+    #expect(!UsageBudget(10).reached(by: 9.99))
+    #expect(UsageBudget(10).reached(by: 10))
+}

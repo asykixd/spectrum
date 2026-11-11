@@ -234,17 +234,19 @@ public struct BossReport: Sendable {
     public let activeTime: TimeInterval
     public let projects: [Project]
     public let window: Window?
+    public let sessionCosts: [String: Double]
 
     /// Fixed numbers, for previews.
     public init(
         todayCost: Double, todayTokens: Int, activeTime: TimeInterval, projects: [Project],
-        window: Window?
+        window: Window?, sessionCosts: [String: Double] = [:]
     ) {
         self.todayCost = todayCost
         self.todayTokens = todayTokens
         self.activeTime = activeTime
         self.projects = projects
         self.window = window
+        self.sessionCosts = sessionCosts
     }
 
     public init(log: UsageLog, now: Date, calendar: Calendar = .current) {
@@ -255,6 +257,9 @@ public struct BossReport: Sendable {
         let today = entries.filter { $0.date >= dayStart && $0.date <= now }
         todayCost = today.reduce(0) { $0 + $1.cost }
         todayTokens = today.reduce(0) { $0 + $1.tokens.total }
+        sessionCosts = today.reduce(into: [:]) { costs, entry in
+            costs[entry.sessionID, default: 0] += entry.cost
+        }
 
         let moments = log.activity.filter { $0.date >= dayStart && $0.date <= now }
         var busy: [String: TimeInterval] = [:]

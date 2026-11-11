@@ -116,8 +116,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let chats = ClaudeChatMonitor(model: model)
         chats.start()
         let transcripts = TranscriptMonitor(model: model)
-        model.onTranscriptHook = { [weak transcripts] id in transcripts?.receivedHook(for: id) }
         let boss = BossMonitor(model: model)
+        model.onTranscriptHook = { [weak transcripts, weak boss] id in
+            transcripts?.receivedHook(for: id)
+            boss?.update()
+        }
         let launcher = SessionLauncher(model: model)
         model.onStartSession = { [weak launcher] directory, prompt in
             launcher?.start(in: directory, prompt: prompt)
@@ -251,6 +254,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.title = "Spectrum Settings"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
+            let available = NSScreen.main?.visibleFrame.height ?? 850
+            window.setContentSize(NSSize(width: 460, height: min(760, available - 60)))
             window.center()
             settingsWindow = window
         }

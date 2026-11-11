@@ -11,6 +11,7 @@ enum PreviewRenderer {
         var tab: AgentsTab = .sessions
         var sessions: [AgentSession] = []
         var music = false
+        var withoutNotch = false
         var hovering = false
         var agentsOpen = false
         var conversation = false
@@ -31,6 +32,7 @@ enum PreviewRenderer {
 
         let scenes = [
             Scene(name: "compact", music: true),
+            Scene(name: "compact-pill", music: true, withoutNotch: true),
             Scene(name: "expanded", music: true, hovering: true),
             Scene(
                 name: "expanded-waiting",
@@ -64,7 +66,12 @@ enum PreviewRenderer {
         try write(
             AppIcon().frame(width: 512, height: 512), to: directory.appending(path: "AppIcon.png"))
         for scene in scenes {
-            let model = NotchModel(geometry: geometry)
+            let sceneGeometry =
+                scene.withoutNotch
+                ? NotchGeometry(
+                    screenFrame: screen, topLeftArea: nil, topRightArea: nil, visibleTop: 958)
+                : geometry
+            let model = NotchModel(geometry: sceneGeometry)
             model.renderingStill = true
             model.installedHooks = [.claude]
             model.tab = scene.tab
@@ -100,7 +107,7 @@ enum PreviewRenderer {
             if scene.hovering { model.isHovering = true }
             if scene.agentsOpen { model.agentsOpen = true }
 
-            let frame = NotchLayout.panelFrame(for: geometry)
+            let frame = NotchLayout.panelFrame(for: sceneGeometry)
             let view = NotchRootView(model: model)
                 .frame(width: frame.width, height: frame.height)
                 .background(

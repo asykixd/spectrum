@@ -6,6 +6,7 @@ public struct NotchGeometry: Equatable, Sendable {
     public static let earWidth: CGFloat = 40
     /// Fallback for screens without a notch, roughly the size of a MacBook notch.
     static let fallbackNotchSize = CGSize(width: 185, height: 32)
+    static let fallbackGap: CGFloat = 8
 
     public let notch: CGRect
     public let panel: CGRect
@@ -16,7 +17,9 @@ public struct NotchGeometry: Equatable, Sendable {
     ///   - screenFrame: `NSScreen.frame`.
     ///   - topLeftArea: `NSScreen.auxiliaryTopLeftArea`, nil on screens without a notch.
     ///   - topRightArea: `NSScreen.auxiliaryTopRightArea`, nil on screens without a notch.
-    public init(screenFrame: CGRect, topLeftArea: CGRect?, topRightArea: CGRect?) {
+    public init(
+        screenFrame: CGRect, topLeftArea: CGRect?, topRightArea: CGRect?, visibleTop: CGFloat? = nil
+    ) {
         let notch: CGRect
         if let left = topLeftArea, let right = topRightArea, right.minX > left.maxX {
             let height = max(left.height, right.height)
@@ -26,8 +29,9 @@ public struct NotchGeometry: Equatable, Sendable {
             hasHardwareNotch = true
         } else {
             let size = Self.fallbackNotchSize
+            let top = min(visibleTop ?? screenFrame.maxY, screenFrame.maxY) - Self.fallbackGap
             notch = CGRect(
-                x: screenFrame.midX - size.width / 2, y: screenFrame.maxY - size.height,
+                x: screenFrame.midX - size.width / 2, y: top - size.height,
                 width: size.width, height: size.height)
             hasHardwareNotch = false
         }

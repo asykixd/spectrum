@@ -20,7 +20,9 @@ struct SignalView: View {
                 }
                 .frame(height: model.geometry.notch.height)
                 .overlay {
-                    if signal.isNeedsYou { Self.outline(blink: blink) }
+                    if signal.isNeedsYou {
+                        Self.outline(blink: blink, roundedTop: !model.geometry.hasHardwareNotch)
+                    }
                 }
             }
             .contentShape(Rectangle())
@@ -34,9 +36,13 @@ struct SignalView: View {
         0.5 + 0.5 * sin(date.timeIntervalSinceReferenceDate * 4)
     }
 
-    static func outline(blink: Double) -> some View {
-        UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10)
-            .strokeBorder(Color(hex: 0xF59E0B).opacity(0.15 + 0.45 * blink), lineWidth: 1)
+    static func outline(blink: Double, roundedTop: Bool) -> some View {
+        let top: CGFloat = roundedTop ? 10 : 0
+        return UnevenRoundedRectangle(
+            topLeadingRadius: top, bottomLeadingRadius: 10, bottomTrailingRadius: 10,
+            topTrailingRadius: top
+        )
+        .strokeBorder(Color(hex: 0xF59E0B).opacity(0.15 + 0.45 * blink), lineWidth: 1)
     }
 
     /// A blinking warning while an agent waits, a checkmark when it finishes.

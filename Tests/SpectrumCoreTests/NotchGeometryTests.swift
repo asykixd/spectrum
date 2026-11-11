@@ -18,10 +18,12 @@ import Testing
 @Test func fallsBackToCenteredNotchWithoutHardwareNotch() {
     let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
-    let geometry = NotchGeometry(screenFrame: screen, topLeftArea: nil, topRightArea: nil)
+    let visibleTop = screen.maxY - 24
+    let geometry = NotchGeometry(
+        screenFrame: screen, topLeftArea: nil, topRightArea: nil, visibleTop: visibleTop)
 
     #expect(!geometry.hasHardwareNotch)
     #expect(geometry.notch.midX == screen.midX)
-    #expect(geometry.notch.maxY == screen.maxY)
+    #expect(geometry.notch.maxY == visibleTop - NotchGeometry.fallbackGap)
     #expect(geometry.panel.width == geometry.notch.width + 2 * NotchGeometry.earWidth)
 }

@@ -10,7 +10,10 @@ struct NotchRootView: View {
     }
     private var shape: UnevenRoundedRectangle {
         let radius = NotchLayout.bottomRadius(for: mode)
-        return UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius)
+        let top = model.geometry.hasHardwareNotch ? 0 : radius
+        return UnevenRoundedRectangle(
+            topLeadingRadius: top, bottomLeadingRadius: radius, bottomTrailingRadius: radius,
+            topTrailingRadius: top)
     }
 
     var body: some View {

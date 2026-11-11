@@ -68,16 +68,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main
-        guard let screen else {
+        guard let geometry = currentGeometry() else {
             log.error("no screen available")
             return
         }
-        let geometry = NotchGeometry(
-            screenFrame: screen.frame,
-            topLeftArea: screen.auxiliaryTopLeftArea,
-            topRightArea: screen.auxiliaryTopRightArea
-        )
         let model = NotchModel(geometry: geometry, settings: .load(from: .standard))
         configureHooks(for: model)
         model.onOpenSettings = { [weak self] in self?.showSettings() }
@@ -179,6 +173,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         waveform?.setActive(false)
         agents?.stop()
+    }
+
+    func applicationDidChangeScreenParameters(_ notification: Notification) {
+        guard let model, let panel, let geometry = currentGeometry(), geometry != model.geometry
+        else {
+            return
+        }
+        model.geometry = geometry
+        panel.setFrame(NotchLayout.panelFrame(for: geometry), display: true)
+        updatePointerTracking(for: model.mode, at: NSEvent.mouseLocation)
+    }
+
+    private func currentGeometry() -> NotchGeometry? {
+        let screen =
+            NSScreen.screens.first {
+                $0.auxiliaryTopLeftArea != nil && $0.auxiliaryTopRightArea != nil
+            }
+            ?? NSScreen.main
+        guard let screen else { return nil }
+        return NotchGeometry(
+            screenFrame: screen.frame, topLeftArea: screen.auxiliaryTopLeftArea,
+            topRightArea: screen.auxiliaryTopRightArea, visibleTop: screen.visibleFrame.maxY)
     }
 
     private func toggleAgentsPanel() {

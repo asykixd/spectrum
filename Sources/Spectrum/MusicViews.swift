@@ -87,7 +87,9 @@ struct CompactMusicView: View {
             .padding(.horizontal, 10)
             .frame(height: model.geometry.notch.height)
             .overlay {
-                if needsYou { SignalView.outline(blink: blink) }
+                if needsYou {
+                    SignalView.outline(blink: blink, roundedTop: !model.geometry.hasHardwareNotch)
+                }
             }
         }
     }

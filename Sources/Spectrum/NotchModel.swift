@@ -14,7 +14,7 @@ enum AgentsTab: Hashable {
 @MainActor
 @Observable
 final class NotchModel {
-    let geometry: NotchGeometry
+    var geometry: NotchGeometry
 
     var settings: SpectrumSettings {
         didSet {

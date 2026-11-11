@@ -22,6 +22,7 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     public let cwd: String?
     public let toolName: String?
     public let transcriptPath: String?
+    public let terminalTab: TerminalTab?
     /// Text of a `Notification` event, e.g. "Claude needs your permission to use Bash".
     public let message: String?
     /// String fields of the tool's input; other value types are dropped.
@@ -38,6 +39,8 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         case cwd
         case toolName = "tool_name"
         case transcriptPath = "transcript_path"
+        case terminalTTY = "spectrum_terminal_tty"
+        case terminalLeader = "spectrum_terminal_leader"
         case message
         case toolInput = "tool_input"
         case toolResponse = "tool_response"
@@ -51,6 +54,13 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         cwd = try container.decodeIfPresent(String.self, forKey: .cwd)
         toolName = try container.decodeIfPresent(String.self, forKey: .toolName)
         transcriptPath = try container.decodeIfPresent(String.self, forKey: .transcriptPath)
+        if let tty = try? container.decode(String.self, forKey: .terminalTTY),
+            let leader = try? container.decode(Int32.self, forKey: .terminalLeader)
+        {
+            terminalTab = TerminalTab(tty: tty, sessionLeader: leader)
+        } else {
+            terminalTab = nil
+        }
         message = try container.decodeIfPresent(String.self, forKey: .message)
         toolInput = try? container.decodeIfPresent([String: LooseString].self, forKey: .toolInput)
         // Tool payloads vary by tool and version; a shape we don't know just means no change.
@@ -78,13 +88,17 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         return PermissionPrompt(tool: toolName ?? "tool", detail: detail)
     }
 
-    /// Marks the provider at the socket boundary, since the two hook schemas overlap.
-    public static func forwardedPayload(_ data: Data, from provider: AgentProvider) throws -> Data {
-        guard provider == .codex else { return data }
+    /// Adds the provider and any local Terminal target before sending the hook to the app.
+    public static func forwardedPayload(
+        _ data: Data, from provider: AgentProvider, terminalTab: TerminalTab? = nil
+    ) throws -> Data {
+        guard provider == .codex || terminalTab != nil else { return data }
         guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return data
         }
         object[CodingKeys.provider.rawValue] = provider.rawValue
+        object[CodingKeys.terminalTTY.rawValue] = terminalTab?.tty
+        object[CodingKeys.terminalLeader.rawValue] = terminalTab?.sessionLeader
         return try JSONSerialization.data(withJSONObject: object)
     }
 

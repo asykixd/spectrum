@@ -1,7 +1,7 @@
 import AppKit
 import SpectrumCore
 
-/// Opens new Claude Code sessions in Terminal and lets the user pick a folder for one.
+/// Opens and focuses agent sessions in Terminal.
 @MainActor
 final class SessionLauncher {
     private let model: NotchModel
@@ -25,6 +25,27 @@ final class SessionLauncher {
         model.newSessionOpen = false
         // Terminal comes to the front; the panel would only sit over it.
         model.agentsOpen = false
+    }
+
+    func focus(_ tab: TerminalTab) {
+        guard tab.isLive,
+            !NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Terminal")
+                .isEmpty
+        else {
+            model.terminalError = "This Terminal tab is no longer available."
+            return
+        }
+        var error: NSDictionary?
+        let result = NSAppleScript(source: tab.focusScript)?.executeAndReturnError(&error)
+        if let error {
+            let message = error[NSAppleScript.errorMessage] as? String ?? "Unknown error"
+            log.error("focusing Terminal failed: \(message)")
+            model.terminalError = "Couldn't focus Terminal: \(message)"
+        } else if result?.booleanValue == true {
+            model.agentsOpen = false
+        } else {
+            model.terminalError = "This Terminal tab is no longer available."
+        }
     }
 
     func chooseFolder() {

@@ -16,6 +16,7 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     public var cwd: String?
     /// The agent's JSONL transcript, for showing the conversation.
     public var transcriptPath: String?
+    public var terminalTab: TerminalTab?
     public var activity: AgentActivity
     /// A permission request the island can answer, while the hook still waits for it.
     public var permission: PermissionPrompt?
@@ -87,6 +88,9 @@ public struct SessionStore: Equatable, Sendable {
         if let change = event.fileChange { session.changes.record(change) }
         session.cwd = event.cwd ?? session.cwd
         session.transcriptPath = event.transcriptPath ?? session.transcriptPath
+        if event.kind == .sessionStart || event.terminalTab != nil {
+            session.terminalTab = event.terminalTab
+        }
         session.updatedAt = date
         sessions[event.sessionKey] = session
     }

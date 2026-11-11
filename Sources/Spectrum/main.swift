@@ -27,7 +27,10 @@ case "hook":
     // permission decision goes to stdout; an empty answer lets the agent show its own prompt.
     let input = FileHandle.standardInput.readDataToEndOfFile()
     let provider = arguments.dropFirst().first.flatMap(AgentProvider.init(rawValue:)) ?? .claude
-    guard let payload = try? AgentEvent.forwardedPayload(input, from: provider),
+    let terminalTab = TerminalTab.capture(environment: ProcessInfo.processInfo.environment)
+    guard
+        let payload = try? AgentEvent.forwardedPayload(
+            input, from: provider, terminalTab: terminalTab),
         let event = try? AgentEvent.decode(payload)
     else { exit(0) }
     let path = SpectrumPaths.agentSocket.path

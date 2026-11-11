@@ -58,12 +58,14 @@ final class NotchModel {
     var replyingSessionIDs: Set<String> = []
     /// Row under the pointer in the sessions list; it reveals the remove button.
     var hoveredSessionID: String?
+    var terminalError: String?
     /// Agent under the pointer in the office.
     var officeHoverID: String?
 
     var agentsOpen = false {
         didSet {
             if agentsOpen { attention.acknowledge() }
+            if !agentsOpen { terminalError = nil }
             updateMode()
             if agentsOpen != oldValue { onPanelChange() }
         }
@@ -93,6 +95,7 @@ final class NotchModel {
     @ObservationIgnored var onRemoveHooks: (AgentProvider) -> Void = { _ in }
     @ObservationIgnored var onOpenSettings: () -> Void = {}
     @ObservationIgnored var onOpenChat: (AgentSession) -> Void = { _ in }
+    @ObservationIgnored var onOpenTerminal: (TerminalTab) -> Void = { _ in }
     @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }
     @ObservationIgnored var onStartSession: (String, String?) -> Void = { _, _ in }
     @ObservationIgnored var onChooseFolder: () -> Void = {}

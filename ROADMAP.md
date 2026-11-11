@@ -3,7 +3,7 @@
 ## Now
 - [x] Universal `Spectrum.app` with `Info.plist` usage descriptions and an app icon; release workflow
 - [ ] Developer ID signing and notarization, so the app opens without the quarantine workaround
-- [ ] Jump to the agent's terminal window from the sessions list
+- [x] Jump to the agent's original macOS Terminal tab from the sessions list
 - [ ] Launch at login
 - [x] Allow or deny permission requests from the island (`PermissionRequest` hook)
 - [x] Task progress from `TodoWrite` and the Task tools around the avatar in the sessions list

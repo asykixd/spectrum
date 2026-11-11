@@ -25,6 +25,6 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSAppleEventsUsageDescription</key>
-    <string>Spectrum reads the current track from Spotify and Apple Music, sends play, pause, next and previous, and opens new Claude Code sessions in Terminal.</string>
+    <string>Spectrum controls playback in Spotify and Apple Music and opens or focuses agent sessions in Terminal.</string>
 </dict>
 </plist>

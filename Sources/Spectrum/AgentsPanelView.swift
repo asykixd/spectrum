@@ -175,10 +175,17 @@ struct SessionsListView: View {
         if model.sessions.isEmpty {
             emptyState
         } else {
-            // Scroll only when the rows don't fit, so a short list sits still like a widget.
-            ViewThatFits(in: .vertical) {
-                sections.frame(maxHeight: .infinity, alignment: .top)
-                ScrollView { sections }.scrollIndicators(.never)
+            VStack(alignment: .leading, spacing: 6) {
+                if let error = model.terminalError {
+                    Label(error, systemImage: "exclamationmark.circle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color(hex: 0xF5B544))
+                }
+                // Scroll only when the rows don't fit, so a short list sits still like a widget.
+                ViewThatFits(in: .vertical) {
+                    sections.frame(maxHeight: .infinity, alignment: .top)
+                    ScrollView { sections }.scrollIndicators(.never)
+                }
             }
         }
     }
@@ -216,6 +223,9 @@ struct SessionsListView: View {
                             }
                         },
                         open: { model.open(session) },
+                        openTerminal: {
+                            if let tab = session.terminalTab { model.onOpenTerminal(tab) }
+                        },
                         dismiss: { withAnimation(.snappy) { model.dismiss(session) } })
                 }
             }
@@ -271,6 +281,7 @@ private struct SessionRow: View {
     let hovering: Bool
     let hover: (Bool) -> Void
     let open: () -> Void
+    let openTerminal: () -> Void
     let dismiss: () -> Void
 
     private var isWaiting: Bool { session.activity == .waitingForUser }
@@ -316,6 +327,17 @@ private struct SessionRow: View {
                     .frame(maxWidth: 200, alignment: .trailing)
             }
             if hovering {
+                if session.terminalTab != nil {
+                    Button(action: openTerminal) {
+                        Image(systemName: "terminal")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 22, height: 22)
+                            .background(Circle().fill(.white.opacity(0.12)))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open in Terminal")
+                    .accessibilityLabel("Open in Terminal")
+                }
                 Button(action: dismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
@@ -352,6 +374,7 @@ private struct SessionRow: View {
         .onHover(perform: hover)
         .contextMenu {
             Button(session.kind == .chat ? "Open in Claude" : "Show Conversation", action: open)
+            if session.terminalTab != nil { Button("Open in Terminal", action: openTerminal) }
             Button("Remove from List", action: dismiss)
         }
     }

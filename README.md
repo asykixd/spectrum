@@ -45,6 +45,8 @@ desks, talk in the meeting room and doze on the sofa.
   each one is doing right now. A ring around the avatar shows how much of its plan is done, and
   "2 files +22 −33" what it changed since your last prompt.
   Hover a row and press ✕ to hide it until it does something new.
+- **Open in Terminal**: hover a Claude Code or Codex session started in macOS Terminal and click
+  the terminal icon to focus its original tab. The same action is in the row's context menu.
 - **New session**: the ＋ button in the panel picks one of your recent Claude Code folders (or any
   other) and an optional first prompt, and opens the session in Terminal.
 - **Conversation**: click a Claude Code or Codex session to read its recent messages and tool
@@ -121,6 +123,7 @@ macOS asks once for each:
 | --- | --- |
 | Accessibility | The double-tap shortcut and <kbd>Esc</kbd> system-wide; reading chat state from the Claude app |
 | Automation → Spotify / Music | Reading the current track and sending play, pause, next, previous |
+| Automation → Terminal | Starting Claude Code and focusing agent sessions in Terminal |
 
 Spectrum is signed ad hoc, so macOS may ask again after an update.
 

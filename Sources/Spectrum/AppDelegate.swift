@@ -117,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             launcher?.start(in: directory, prompt: prompt)
         }
         model.onChooseFolder = { [weak launcher] in launcher?.chooseFolder() }
+        model.onOpenTerminal = { [weak launcher] tab in launcher?.focus(tab) }
         let replies = ReplySender(model: model)
         model.onReply = { [weak replies] prompt, session in replies?.send(prompt, to: session) }
 

@@ -85,36 +85,75 @@ public struct UsageLog: Sendable {
             let content: LooseString?
         }
 
-        let type: String?
-        let timestamp: String?
-        let sessionId: String?
-        let cwd: String?
-        let isMeta: Bool?
+        struct Header: Decodable {
+            let type: String?
+            let timestamp: String?
+            let sessionId: String?
+            let cwd: String?
+            let isMeta: Bool?
+        }
+
+        let header: Header
         let message: Message?
+
+        init(from decoder: Decoder) throws {
+            header = try Header(from: decoder)
+            let fields = try decoder.container(keyedBy: CodingKeys.self)
+            message = try fields.decodeIfPresent(Message.self, forKey: .message)
+        }
+
+        private enum CodingKeys: String, CodingKey { case message }
     }
 
     public static func parse(_ jsonl: String) -> UsageLog {
-        let decoder = JSONDecoder()
-        let dates = ISO8601DateFormatter()
-        dates.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let plainDates = ISO8601DateFormatter()
+        let parser = LineParser()
         var log = UsageLog()
         var seen = Set<String>()
-        for raw in jsonl.split(separator: "\n") {
-            // Most lines are tool output; skip them before paying for a full decode.
-            guard raw.contains("\"timestamp\"") else { continue }
-            guard let line = try? decoder.decode(Line.self, from: Data(raw.utf8)),
-                let stamp = line.timestamp,
+        for line in jsonl.utf8.split(separator: UInt8(ascii: "\n")) {
+            parser.append(Data(line), to: &log, seen: &seen)
+        }
+        return log
+    }
+
+    struct LineParser {
+        private static let timestampKey = Data(#""timestamp""#.utf8)
+        private static let usageKey = Data(#""usage""#.utf8)
+        private static let userType = Data(#""user""#.utf8)
+        private static let unicodeEscape = Data(#"\u"#.utf8)
+
+        private let decoder = JSONDecoder()
+        private let dates = ISO8601DateFormatter()
+        private let plainDates = ISO8601DateFormatter()
+
+        init() { dates.formatOptions = [.withInternetDateTime, .withFractionalSeconds] }
+
+        func append(_ raw: Data, to log: inout UsageLog, seen: inout Set<String>) {
+            let escaped = raw.range(of: Self.unicodeEscape) != nil
+            guard escaped || raw.range(of: Self.timestampKey) != nil else { return }
+            let header: Line.Header
+            let message: Line.Message?
+            if escaped || raw.range(of: Self.usageKey) != nil || raw.range(of: Self.userType) != nil
+            {
+                guard let line = try? decoder.decode(Line.self, from: raw) else { return }
+                header = line.header
+                message = line.message
+            } else {
+                // Tool results still mark active time, but their message payload is unnecessary.
+                guard let fields = try? decoder.decode(Line.Header.self, from: raw) else { return }
+                header = fields
+                message = nil
+            }
+            guard let stamp = header.timestamp,
                 let date = dates.date(from: stamp) ?? plainDates.date(from: stamp),
-                let sessionID = line.sessionId
-            else { continue }
-            let project = line.cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "?"
+                let sessionID = header.sessionId
+            else { return }
+            let project = header.cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "?"
             log.activity.append((sessionID, project, date))
-            switch line.type {
+            switch header.type {
             case "assistant":
-                guard let message = line.message, let id = message.id, let usage = message.usage,
+                guard let message, let id = message.id, let usage = message.usage,
                     seen.insert(id).inserted
-                else { continue }
+                else { return }
                 let write = usage.cacheCreationInputTokens ?? 0
                 let write1h = usage.cacheCreation?.ephemeral1hInputTokens ?? 0
                 let write5m = usage.cacheCreation?.ephemeral5mInputTokens ?? (write - write1h)
@@ -128,17 +167,16 @@ public struct UsageLog: Sendable {
                             cacheRead: usage.cacheReadInputTokens ?? 0)))
             case "user":
                 // Typed prompts are plain strings; tool results and injected turns are not.
-                guard line.isMeta != true,
-                    let text = line.message?.content?.value?.trimmingCharacters(
+                guard header.isMeta != true,
+                    let text = message?.content?.value?.trimmingCharacters(
                         in: .whitespacesAndNewlines),
                     !text.isEmpty, !text.hasPrefix("<")
-                else { continue }
+                else { return }
                 log.prompts.append(Prompt(date: date, sessionID: sessionID, text: text))
             default:
-                continue
+                return
             }
         }
-        return log
     }
 }
 

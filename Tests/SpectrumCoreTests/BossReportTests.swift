@@ -143,3 +143,28 @@ private func date(_ text: String) -> Date {
     let log = scanner.scan(since: .distantPast)
     #expect(log.entries.map(\.messageID).sorted() == ["a1", "m1", "m2"])
 }
+
+@Test func scannerKeepsActivityAndDeduplicatesUsageAcrossChunkedReads() throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let file = directory.appending(path: "session.jsonl")
+    let activity =
+        #"{"type":"system","timestamp":"2026-10-28T10:00:00Z","sessionId":"s1","message":"not a usage payload","output":""#
+        + String(repeating: "x", count: 130_000) + "\"}\n"
+    let usage = assistant("m1", at: "2026-10-28T10:01:00Z") + "\n"
+    try Data((activity + usage).utf8).write(to: file)
+
+    var scanner = UsageScanner(root: directory)
+    let first = scanner.scan(since: .distantPast)
+    #expect(first.activity.count == 2)
+    #expect(first.entries.map(\.messageID) == ["m1"])
+
+    let handle = try FileHandle(forWritingTo: file)
+    defer { try? handle.close() }
+    try handle.seekToEnd()
+    try handle.write(contentsOf: Data(usage.utf8))
+    let updated = scanner.scan(since: .distantPast)
+    #expect(updated.activity.count == 3)
+    #expect(updated.entries.map(\.messageID) == ["m1"])
+}

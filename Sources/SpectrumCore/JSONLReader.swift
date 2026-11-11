@@ -53,15 +53,21 @@ struct JSONLReader: Sendable {
             onReset()
         }
         stamp = current
+        guard offset < size else { return }
         try handle.seek(toOffset: offset)
         while offset < size,
             let chunk = try handle.read(upToCount: Int(min(64 * 1024, size - offset))),
             !chunk.isEmpty
         {
             var start = chunk.startIndex
-            for end in chunk.indices where chunk[end] == UInt8(ascii: "\n") {
-                add(chunk[start..<end], limit: maxRecordBytes)
-                if !discarding { onLine(pending, lineStart) }
+            while let end = chunk[start...].firstIndex(of: UInt8(ascii: "\n")) {
+                let line = chunk[start..<end]
+                if pending.isEmpty, !discarding, maxRecordBytes.map({ line.count <= $0 }) ?? true {
+                    onLine(line, lineStart)
+                } else {
+                    add(line, limit: maxRecordBytes)
+                    if !discarding { onLine(pending, lineStart) }
+                }
                 pending.removeAll(keepingCapacity: true)
                 discarding = false
                 lineStart = offset + UInt64(end + 1 - chunk.startIndex)

@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: NotchPanel?
     private var model: NotchModel?
     private var nowPlaying: NowPlayingMonitor?
+    private var waveform: AudioWaveformMonitor?
     private var agents: AgentMonitor?
     private var chats: ClaudeChatMonitor?
     private var transcripts: TranscriptMonitor?
@@ -100,6 +101,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let nowPlaying = NowPlayingMonitor(model: model)
+        let waveform = AudioWaveformMonitor(model: model)
+        model.onWaveformActivity = { [weak waveform] active in waveform?.setActive(active) }
         model.onCommand = { [weak nowPlaying] in nowPlaying?.send($0) }
         nowPlaying.start()
 
@@ -151,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.panel = panel
         self.model = model
         self.nowPlaying = nowPlaying
+        self.waveform = waveform
         self.agents = agents
         self.chats = chats
         self.transcripts = transcripts
@@ -161,6 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        waveform?.setActive(false)
         agents?.stop()
     }
 

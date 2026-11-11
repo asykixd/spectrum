@@ -19,7 +19,7 @@
 ## Next
 - [x] Track local Codex sessions in the list and pixel office, with transcripts and approvals
 - [x] Opt-in now playing and play/pause for Safari, Google Chrome, and QuickTime Player
-- [ ] Waveform driven by real audio levels instead of an animation
+- [x] Opt-in waveform driven by real audio levels on macOS 14.2 and later
 - [x] Synced lyrics in the expanded player (LRCLIB)
 - [ ] Poll the pointer slower while it is far from the notch
 - [ ] Poll now playing only while paused; stop when no player is running

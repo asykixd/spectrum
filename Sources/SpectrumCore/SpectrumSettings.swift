@@ -16,6 +16,7 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
 
     public var showMusic = true
     public var showExtraPlayers = false
+    public var liveWaveform = false
     public var showClaudeChats = true
     /// How long a Claude app chat stays listed after it was last open.
     public var chatRetentionMinutes = 15
@@ -48,6 +49,8 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
         showExtraPlayers =
             try container.decodeIfPresent(Bool.self, forKey: .showExtraPlayers)
             ?? defaults.showExtraPlayers
+        liveWaveform =
+            try container.decodeIfPresent(Bool.self, forKey: .liveWaveform) ?? defaults.liveWaveform
         showClaudeChats =
             try container.decodeIfPresent(Bool.self, forKey: .showClaudeChats)
             ?? defaults.showClaudeChats

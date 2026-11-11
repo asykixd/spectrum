@@ -26,5 +26,7 @@
     <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>Spectrum reads and controls playback in your music apps and enabled browsers and opens or focuses agent sessions in Terminal.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Spectrum measures system audio levels to animate the waveform. It does not save audio.</string>
 </dict>
 </plist>

@@ -34,6 +34,7 @@ final class NotchModel {
     /// Synced lyrics of the playing track, when lrclib.net has them.
     var lyrics: Lyrics?
     var accent: Color = .white
+    var waveformLevels: [Double]?
 
     private(set) var launchAtLogin = LaunchAtLogin.unavailable
     private(set) var launchAtLoginError: String?
@@ -106,6 +107,7 @@ final class NotchModel {
     @ObservationIgnored var onPermission: (AgentSession, PermissionDecision) -> Void = { _, _ in }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
     @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
+    @ObservationIgnored var onWaveformActivity: (Bool) -> Void = { _ in }
     /// The panel opened or closed, or switched tab or conversation.
     @ObservationIgnored var onPanelChange: () -> Void = {}
     @ObservationIgnored var onTranscriptHook: (String) -> Void = { _ in }
@@ -249,6 +251,7 @@ final class NotchModel {
             agentsOpen: agentsOpen,
             signal: current
         )
+        onWaveformActivity(next == .compact && settings.liveWaveform)
         guard next != mode else { return }
         if settings.haptics, let cue = HapticCue.forTransition(from: mode, to: next) {
             onHaptic(cue)

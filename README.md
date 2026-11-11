@@ -139,6 +139,7 @@ The gear in the agents panel opens Settings, installs or removes the hooks and q
 | Launch at login | Off |
 | Show music while it plays | On |
 | Show playback from browsers and QuickTime | Off |
+| Use real audio for the waveform (macOS 14.2+) | Off |
 | Show synced lyrics in the expanded player | On |
 | Blink when an agent needs permission or an answer | On |
 | Flash a checkmark when a task finishes | On |

@@ -36,6 +36,13 @@ struct SettingsView: View {
                     Text("Safari and Chrome require Allow JavaScript from Apple Events.")
                 }
                 .disabled(!model.settings.showMusic)
+                if #available(macOS 14.2, *) {
+                    Toggle(isOn: $model.settings.liveWaveform) {
+                        Text("Use real audio for the waveform")
+                        Text("Uses system audio levels while the compact player is visible.")
+                    }
+                    .disabled(!model.settings.showMusic)
+                }
                 Toggle(isOn: $model.settings.showLyrics) {
                     Text("Show synced lyrics in the expanded player")
                     Text("Looks up the playing track's title and artist on lrclib.net.")

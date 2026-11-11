@@ -2,7 +2,6 @@
 
 ## Now
 - [x] Universal `Spectrum.app` with `Info.plist` usage descriptions and an app icon; release workflow
-- [ ] Developer ID signing and notarization, so the app opens without the quarantine workaround
 - [x] Jump to the agent's original macOS Terminal tab from the sessions list
 - [ ] Launch at login
 - [x] Allow or deny permission requests from the island (`PermissionRequest` hook)
@@ -40,6 +39,7 @@
 ## Later
 - [ ] Cursor and GitHub Copilot agents
 - [ ] Reply to Claude app chats from the panel
+- [ ] Developer ID signing and notarization once an Apple Developer Program membership is available
 - [ ] Auto-update with Sparkle (after notarization)
 - [ ] `Spectrum diag`: socket, hooks, accessibility and recent events
 

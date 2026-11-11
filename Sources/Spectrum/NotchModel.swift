@@ -110,7 +110,8 @@ final class NotchModel {
     @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }
     @ObservationIgnored var onStartSession: (String, String?) -> Void = { _, _ in }
     @ObservationIgnored var onChooseFolder: () -> Void = {}
-    @ObservationIgnored var onPermission: (AgentSession, PermissionDecision) -> Void = { _, _ in }
+    @ObservationIgnored var onPermission: (String, UUID, PermissionDecision) -> Void = { _, _, _ in
+    }
     @ObservationIgnored var onHaptic: (HapticCue) -> Void = { _ in }
     @ObservationIgnored var onModeChange: (NotchMode) -> Void = { _ in }
     @ObservationIgnored var onWaveformActivity: (Bool) -> Void = { _ in }
@@ -234,9 +235,9 @@ final class NotchModel {
         return (session, prompt)
     }
 
-    func answerPermission(_ decision: PermissionDecision) {
-        guard let request = permissionRequest else { return }
-        onPermission(request.session, decision)
+    func answerPermission(_ decision: PermissionDecision, for session: AgentSession) {
+        guard let id = session.permission?.requestID else { return }
+        onPermission(session.id, id, decision)
     }
 
     private func updateMode() {

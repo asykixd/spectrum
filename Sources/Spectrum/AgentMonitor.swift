@@ -4,12 +4,18 @@ import SpectrumCore
 /// Receives coding agent hook events and keeps the model's session list current.
 @MainActor
 final class AgentMonitor {
+    private struct PendingPermission {
+        let id: UUID
+        let reply: AgentSocketReply
+        let projectRule: ProjectPermissionRule?
+    }
+
     private let model: NotchModel
     private let server = AgentSocketServer(path: SpectrumPaths.agentSocket.path)
     private var store = SessionStore()
     private var pruneTimer: Timer?
     /// Permission hooks still waiting for an answer from the island, by session.
-    private var pendingPermissions: [String: AgentSocketReply] = [:]
+    private var pendingPermissions: [String: PendingPermission] = [:]
 
     init(model: NotchModel) {
         self.model = model
@@ -39,16 +45,18 @@ final class AgentMonitor {
     }
 
     func stop() {
-        for reply in pendingPermissions.values { reply.send(nil) }
+        for pending in pendingPermissions.values { pending.reply.send(nil) }
         pendingPermissions = [:]
         server.stop()
     }
 
     /// Sends the island's answer to the waiting hook.
-    func answer(_ session: AgentSession, with decision: PermissionDecision) {
-        guard let reply = pendingPermissions.removeValue(forKey: session.id) else { return }
-        reply.send(decision.hookOutput)
-        store.answeredPermission(sessionID: session.id)
+    func answer(sessionID: String, requestID: UUID, with decision: PermissionDecision) {
+        guard let pending = pendingPermissions[sessionID], pending.id == requestID else { return }
+        if case .alwaysAllow(let rule) = decision, rule != pending.projectRule { return }
+        pendingPermissions.removeValue(forKey: sessionID)
+        pending.reply.send(decision.hookOutput)
+        store.answeredPermission(sessionID: sessionID)
         publish()
     }
 
@@ -60,11 +68,20 @@ final class AgentMonitor {
             log.error("bad hook payload: \(error)")
             return reply.send(nil)
         }
-        // Whatever the session does next, an older request of it can no longer be answered.
-        pendingPermissions.removeValue(forKey: event.sessionKey)?.send(nil)
-        store.apply(event, at: Date())
-        if event.kind == .permissionRequest && model.settings.answerPermissions {
-            wait(for: event.sessionKey, reply: reply)
+        // Claude emits a notification about the same prompt while its permission hook waits.
+        if event.kind == .notification, pendingPermissions[event.sessionKey] != nil {
+            return reply.send(nil)
+        }
+        pendingPermissions.removeValue(forKey: event.sessionKey)?.reply.send(nil)
+        let requestID =
+            event.kind == .permissionRequest && model.settings.answerPermissions ? UUID() : nil
+        store.apply(event, at: Date(), permissionID: requestID)
+        if let requestID {
+            wait(
+                for: event.sessionKey,
+                pending: PendingPermission(
+                    id: requestID, reply: reply,
+                    projectRule: store.sessions[event.sessionKey]?.permission?.projectRule))
         } else {
             reply.send(nil)
             store.expirePermission(sessionID: event.sessionKey)
@@ -73,17 +90,18 @@ final class AgentMonitor {
         model.onTranscriptHook(event.sessionKey)
     }
 
-    private func wait(for sessionID: String, reply: AgentSocketReply) {
-        pendingPermissions[sessionID] = reply
+    private func wait(for sessionID: String, pending: PendingPermission) {
+        pendingPermissions[sessionID] = pending
+        let requestID = pending.id
         // Give up a little before the hook does, so the island stops offering a dead answer.
         let deadline = TimeInterval(HookInstaller.permissionWait) - 2
-        DispatchQueue.main.asyncAfter(deadline: .now() + deadline) { [weak self, weak reply] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + deadline) { [weak self] in
             MainActor.assumeIsolated {
-                guard let self, let reply, self.pendingPermissions[sessionID] === reply else {
-                    return
-                }
+                guard let self, let pending = self.pendingPermissions[sessionID],
+                    pending.id == requestID
+                else { return }
                 self.pendingPermissions[sessionID] = nil
-                reply.send(nil)
+                pending.reply.send(nil)
                 self.store.expirePermission(sessionID: sessionID)
                 self.publish()
             }

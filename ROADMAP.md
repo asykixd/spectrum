@@ -26,7 +26,7 @@
 - [x] Rasterize the static office layer and pause it when nothing moves
 - [x] Bound the Spotify artists cache; cache artwork and lyrics on disk
 - [x] Signposts and a `UsageScanner` benchmark to catch performance regressions
-- [ ] "Always allow" in permission requests, written to the project's `permissions.allow`
+- [x] "Always Allow" for exact Claude Code shell rules in project-local `permissions.allow`
 - [ ] Keyboard control: Return allows, Escape denies, arrows move through sessions
 - [ ] Pulse again when an agent has waited longer than a set time
 - [ ] Spend limits for the day and the five-hour window, cost per session in the list

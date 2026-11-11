@@ -96,3 +96,40 @@ private let bashRequest = #"""
             current: .permission, isPlaying: false, hasTrack: false, isHovering: true,
             agentsOpen: true, signal: asking) == .agents)
 }
+
+@Test func alwaysAllowEchoesOnlyAnExactLocalBashSuggestion() throws {
+    let input = Data(
+        #"{"session_id":"abc","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"swift test"},"permission_suggestions":[{"type":"addRules","behavior":"allow","destination":"localSettings","rules":[{"toolName":"Bash","ruleContent":"swift test"}]}]}"#
+            .utf8)
+    let event = try AgentEvent.decode(input)
+    let rule = try #require(event.permissionPrompt?.projectRule)
+    let output = try #require(
+        String(data: PermissionDecision.alwaysAllow(rule).hookOutput, encoding: .utf8))
+    #expect(output.contains(#""destination":"localSettings""#))
+    #expect(output.contains(#""ruleContent":"swift test""#))
+    #expect(output.contains(#""behavior":"allow""#))
+
+    for replacement in ["swift *", "swift", "swift test && git push"] {
+        let invalid = String(decoding: input, as: UTF8.self)
+            .replacingOccurrences(
+                of: #""ruleContent":"swift test""#, with: #""ruleContent":"\#(replacement)""#)
+        #expect(try AgentEvent.decode(Data(invalid.utf8)).permissionPrompt?.projectRule == nil)
+    }
+    let codex = try AgentEvent.decode(AgentEvent.forwardedPayload(input, from: .codex))
+    #expect(codex.permissionPrompt?.projectRule == nil)
+    #expect(ProjectPermissionRule(tool: "Bash", command: "swift *") == nil)
+}
+
+@Test func consecutivePermissionsKeepDistinctRequestIDs() throws {
+    let input = Data(
+        #"{"session_id":"abc","hook_event_name":"PermissionRequest","tool_name":"Bash"}"#.utf8)
+    let event = try AgentEvent.decode(input)
+    let originalID = UUID()
+    let replacementID = UUID()
+    var store = SessionStore()
+    store.apply(event, at: .distantPast, permissionID: originalID)
+    let original = try #require(store.sessions["abc"]?.permission)
+    store.apply(event, at: .now, permissionID: replacementID)
+    #expect(original.requestID == originalID)
+    #expect(store.sessions["abc"]?.permission?.requestID == replacementID)
+}

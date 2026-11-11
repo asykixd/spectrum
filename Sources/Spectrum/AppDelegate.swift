@@ -109,8 +109,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nowPlaying.start()
 
         let agents = AgentMonitor(model: model)
-        model.onPermission = { [weak agents] session, decision in
-            agents?.answer(session, with: decision)
+        model.onPermission = { [weak agents] sessionID, requestID, decision in
+            agents?.answer(sessionID: sessionID, requestID: requestID, with: decision)
         }
         agents.start()
         let chats = ClaudeChatMonitor(model: model)

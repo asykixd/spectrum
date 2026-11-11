@@ -20,22 +20,28 @@ struct PermissionView: View {
                                 .foregroundStyle(.white.opacity(0.6))
                         }
                         .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
                         if let detail = request.prompt.detail {
                             Text(detail)
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(Color(hex: 0xF59E0B).opacity(0.9))
-                                .lineLimit(2)
+                                .lineLimit(request.prompt.projectRule == nil ? 2 : 4)
                                 .truncationMode(.middle)
                         }
                     }
-                    .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     VStack(spacing: 6) {
-                        answer("Allow", fill: Color(hex: 0x4ADE80), text: .black) {
-                            model.answerPermission(.allow)
+                        answer("Allow Once", fill: Color(hex: 0x4ADE80), text: .black) {
+                            model.answerPermission(.allow, for: request.session)
+                        }
+                        if let rule = request.prompt.projectRule {
+                            answer("Always Allow", fill: .white.opacity(0.12), text: .white) {
+                                model.answerPermission(.alwaysAllow(rule), for: request.session)
+                            }
+                            .help("Allow this exact command in this project")
                         }
                         answer("Deny", fill: .white.opacity(0.12), text: .white) {
-                            model.answerPermission(.deny)
+                            model.answerPermission(.deny, for: request.session)
                         }
                     }
                 }
@@ -52,7 +58,7 @@ struct PermissionView: View {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(text)
-                .frame(width: 72, height: 26)
+                .frame(width: 94, height: 26)
                 .background(Capsule().fill(fill))
                 .contentShape(Capsule())
         }

@@ -31,6 +31,7 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
     public let taskChange: TaskList.Change?
     /// Lines a settled edit or write changed.
     public let fileChange: FileChange?
+    private let permissionSuggestions: [PermissionSuggestion]?
 
     enum CodingKeys: String, CodingKey {
         case provider = "spectrum_provider"
@@ -44,6 +45,19 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         case message
         case toolInput = "tool_input"
         case toolResponse = "tool_response"
+        case permissionSuggestions = "permission_suggestions"
+    }
+
+    private struct PermissionSuggestion: Decodable, Equatable, Sendable {
+        struct Rule: Decodable, Equatable, Sendable {
+            let toolName: String?
+            let ruleContent: String?
+        }
+
+        let type: String?
+        let behavior: String?
+        let destination: String?
+        let rules: [Rule]?
     }
 
     public init(from decoder: Decoder) throws {
@@ -63,6 +77,10 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         }
         message = try container.decodeIfPresent(String.self, forKey: .message)
         toolInput = try? container.decodeIfPresent([String: LooseString].self, forKey: .toolInput)
+        permissionSuggestions =
+            kind == .permissionRequest
+            ? try? container.decode([PermissionSuggestion].self, forKey: .permissionSuggestions)
+            : nil
         // Tool payloads vary by tool and version; a shape we don't know just means no change.
         taskChange =
             kind == .postToolUse
@@ -85,7 +103,19 @@ public struct AgentEvent: Decodable, Equatable, Sendable {
         guard kind == .permissionRequest else { return nil }
         let fields = ["command", "file_path", "url", "pattern", "path", "query", "description"]
         let detail = fields.lazy.compactMap { self.toolInput?[$0]?.value }.first
-        return PermissionPrompt(tool: toolName ?? "tool", detail: detail)
+        return PermissionPrompt(tool: toolName ?? "tool", detail: detail, projectRule: projectRule)
+    }
+
+    private var projectRule: ProjectPermissionRule? {
+        guard provider == .claude, toolName == "Bash", let command = toolInput?["command"]?.value,
+            permissionSuggestions?.contains(where: { suggestion in
+                suggestion.type == "addRules" && suggestion.behavior == "allow"
+                    && suggestion.destination == "localSettings" && suggestion.rules?.count == 1
+                    && suggestion.rules?.first?.toolName == "Bash"
+                    && suggestion.rules?.first?.ruleContent == command
+            }) == true
+        else { return nil }
+        return ProjectPermissionRule(tool: "Bash", command: command)
     }
 
     /// Adds the provider and any local Terminal target before sending the hook to the app.

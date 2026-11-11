@@ -69,7 +69,7 @@ public struct SessionStore: Equatable, Sendable {
 
     public init() {}
 
-    public mutating func apply(_ event: AgentEvent, at date: Date) {
+    public mutating func apply(_ event: AgentEvent, at date: Date, permissionID: UUID? = nil) {
         if event.kind == .sessionEnd {
             sessions[event.sessionKey] = nil
             return
@@ -82,6 +82,7 @@ public struct SessionStore: Equatable, Sendable {
         session.activity = session.activity.applying(event)
         // Any later event means the request was settled, by the island or in the terminal.
         session.permission = event.permissionPrompt
+        session.permission?.requestID = permissionID
         if let change = event.taskChange { session.tasks.apply(change) }
         session.subagents = Self.subagents(session.subagents, after: event)
         if event.kind == .userPromptSubmit { session.changes = ChangeSummary() }

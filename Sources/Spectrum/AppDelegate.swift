@@ -105,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let waveform = AudioWaveformMonitor(model: model)
         model.onWaveformActivity = { [weak waveform] active in waveform?.setActive(active) }
         model.onCommand = { [weak nowPlaying] in nowPlaying?.send($0) }
+        model.onPlaybackSettingsChange = { [weak nowPlaying] in nowPlaying?.settingsChanged() }
         nowPlaying.start()
 
         let agents = AgentMonitor(model: model)

@@ -22,7 +22,7 @@
 - [x] Opt-in waveform driven by real audio levels on macOS 14.2 and later
 - [x] Synced lyrics in the expanded player (LRCLIB)
 - [x] Poll the pointer slower while it is far from the notch
-- [ ] Poll now playing only while paused; stop when no player is running
+- [x] Poll native playback only while paused, and poll extra sources only while their apps are running
 - [ ] Rasterize the static office layer and pause it when nothing moves
 - [ ] Bound the Spotify artists cache; cache artwork and lyrics on disk
 - [ ] Signposts and a `UsageScanner` benchmark to catch performance regressions

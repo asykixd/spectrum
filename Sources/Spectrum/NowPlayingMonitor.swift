@@ -126,6 +126,7 @@ final class NowPlayingMonitor {
     private let model: NotchModel
     private let runner = ScriptRunner()
     private var timer: Timer?
+    private var pollRate: PlaybackPollRate?
     private var observers: [NSObjectProtocol] = []
     private var refreshing = false
     private var refreshPending = false
@@ -139,12 +140,6 @@ final class NowPlayingMonitor {
     }
 
     func start() {
-        // A slow safety-net poll: the players' own notifications deliver changes instantly,
-        // and the position between samples is extrapolated.
-        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }
-        }
-        timer?.tolerance = 1
         // Both players broadcast state changes, which makes play/pause feel instant.
         let center = DistributedNotificationCenter.default()
         for name in ["com.spotify.client.PlaybackStateChanged", "com.apple.Music.playerInfo"] {
@@ -154,7 +149,38 @@ final class NowPlayingMonitor {
                     MainActor.assumeIsolated { self?.refresh() }
                 })
         }
+        let workspace = NSWorkspace.shared.notificationCenter
+        let bundleIDs = Set(players.map(\.bundleID) + Self.extraSourceIDs)
+        for name in [
+            NSWorkspace.didLaunchApplicationNotification,
+            NSWorkspace.didTerminateApplicationNotification,
+        ] {
+            observers.append(
+                workspace.addObserver(forName: name, object: nil, queue: .main) {
+                    [weak self] notification in
+                    guard
+                        let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                            as? NSRunningApplication,
+                        let bundleID = app.bundleIdentifier, bundleIDs.contains(bundleID)
+                    else { return }
+                    MainActor.assumeIsolated {
+                        self?.nextExtraSample = .distantPast
+                        self?.refresh()
+                    }
+                })
+        }
         refresh()
+    }
+
+    func settingsChanged() {
+        nextExtraSample = .distantPast
+        if model.settings.showMusic {
+            refresh()
+        } else {
+            extraTracks = []
+            schedulePoll(nil)
+            apply(nil)
+        }
     }
 
     func send(_ command: MediaCommand) {
@@ -188,6 +214,7 @@ final class NowPlayingMonitor {
     }
 
     private func refresh() {
+        guard model.settings.showMusic else { return }
         guard !refreshing else {
             refreshPending = true
             return
@@ -210,23 +237,47 @@ final class NowPlayingMonitor {
                     tracks.append(track)
                 }
             }
-            if model.settings.showMusic && model.settings.showExtraPlayers {
-                if !tracks.contains(where: \.isPlaying), Date() >= nextExtraSample {
+            guard model.settings.showMusic else { return }
+            let nativePlaying = tracks.contains(where: \.isPlaying)
+            let nativePaused = !tracks.isEmpty && !nativePlaying
+            let extraRunning =
+                model.settings.showExtraPlayers
+                && Self.extraSourceIDs.contains(where: Self.isRunning)
+            if extraRunning {
+                if !nativePlaying, Date() >= nextExtraSample {
                     extraTracks = await sampleExtraPlayers()
                     nextExtraSample = Date().addingTimeInterval(6)
                 }
-                if model.settings.showExtraPlayers {
+                if model.settings.showMusic && model.settings.showExtraPlayers {
                     tracks += extraTracks.filter { Self.isRunning($0.bundleID) }
                 }
             } else {
                 extraTracks = []
                 nextExtraSample = .distantPast
             }
+            guard model.settings.showMusic else { return }
+            schedulePoll(
+                PlaybackPollRate.resolve(
+                    nativePlaying: nativePlaying, nativePaused: nativePaused,
+                    extraSourcesRunning: model.settings.showExtraPlayers && extraRunning))
             let previous = model.nowPlaying
             apply(
                 tracks.first(where: \.isPlaying)
                     ?? tracks.first { $0.isSameTrack(as: previous) } ?? tracks.first)
         }
+    }
+
+    private func schedulePoll(_ rate: PlaybackPollRate?) {
+        guard pollRate != rate else { return }
+        timer?.invalidate()
+        timer = nil
+        pollRate = rate
+        guard let rate else { return }
+        timer = Timer.scheduledTimer(withTimeInterval: rate.interval, repeats: true) {
+            [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        }
+        timer?.tolerance = rate.interval / 3
     }
 
     private func sampleExtraPlayers() async -> [NowPlaying] {
@@ -252,6 +303,9 @@ final class NowPlayingMonitor {
     private static func isRunning(_ bundleID: String) -> Bool {
         runningApplication(bundleID) != nil
     }
+
+    private static let extraSourceIDs =
+        [QuickTimeMedia.bundleID] + BrowserMedia.allCases.map(\.bundleID)
 
     private static func runningApplication(_ bundleID: String) -> NSRunningApplication? {
         NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first

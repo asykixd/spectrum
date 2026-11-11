@@ -26,6 +26,11 @@ final class NotchModel {
             }
             refreshSessions()
             updateMode()
+            if settings.showMusic != oldValue.showMusic
+                || settings.showExtraPlayers != oldValue.showExtraPlayers
+            {
+                onPlaybackSettingsChange()
+            }
         }
     }
 
@@ -96,6 +101,7 @@ final class NotchModel {
     private(set) var mode: NotchMode = .hidden
 
     @ObservationIgnored var onCommand: (MediaCommand) -> Void = { _ in }
+    @ObservationIgnored var onPlaybackSettingsChange: () -> Void = {}
     @ObservationIgnored var onInstallHooks: (AgentProvider) -> Void = { _ in }
     @ObservationIgnored var onRemoveHooks: (AgentProvider) -> Void = { _ in }
     @ObservationIgnored var onOpenSettings: () -> Void = {}

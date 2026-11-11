@@ -3,7 +3,7 @@
 ## Now
 - [x] Universal `Spectrum.app` with `Info.plist` usage descriptions and an app icon; release workflow
 - [x] Jump to the agent's original macOS Terminal tab from the sessions list
-- [ ] Launch at login
+- [x] Launch at login
 - [x] Allow or deny permission requests from the island (`PermissionRequest` hook)
 - [x] Task progress from `TodoWrite` and the Task tools around the avatar in the sessions list
 - [x] Office tool animations: a page for reading, code for edits, a terminal, a browser for the web

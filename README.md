@@ -133,6 +133,7 @@ The gear in the agents panel opens Settings, installs or removes the hooks and q
 
 | Setting | Default |
 | --- | --- |
+| Launch at login | Off |
 | Show music while it plays | On |
 | Show synced lyrics in the expanded player | On |
 | Blink when an agent needs permission or an answer | On |

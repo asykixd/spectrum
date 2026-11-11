@@ -1,3 +1,4 @@
+import ServiceManagement
 import SpectrumCore
 import SwiftUI
 
@@ -6,6 +7,28 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("General") {
+                Toggle(
+                    "Launch at login",
+                    isOn: Binding(
+                        get: { model.launchAtLogin.isRequested }, set: model.setLaunchAtLogin)
+                )
+                .disabled(model.launchAtLogin == .unavailable)
+                if model.launchAtLogin == .unavailable {
+                    Text("Open Spectrum.app to manage launch at login.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if model.launchAtLogin == .needsApproval {
+                    Text("Allow Spectrum in Login Items to finish enabling launch at login.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Open Login Items", action: SMAppService.openSystemSettingsLoginItems)
+                }
+                if let error = model.launchAtLoginError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+            }
             Section("Notch") {
                 Toggle("Show music while it plays", isOn: $model.settings.showMusic)
                 Toggle(isOn: $model.settings.showLyrics) {
@@ -92,5 +115,10 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+        ) { _ in
+            model.refreshLaunchAtLogin()
+        }
     }
 }

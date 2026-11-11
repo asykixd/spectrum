@@ -201,6 +201,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showSettings() {
         guard let model else { return }
         model.agentsOpen = false
+        model.refreshLaunchAtLogin()
         if settingsWindow == nil {
             let window = NSWindow(
                 contentViewController: NSHostingController(

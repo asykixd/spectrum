@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import ServiceManagement
 import SpectrumCore
 import SwiftUI
 
@@ -33,6 +34,9 @@ final class NotchModel {
     /// Synced lyrics of the playing track, when lrclib.net has them.
     var lyrics: Lyrics?
     var accent: Color = .white
+
+    private(set) var launchAtLogin = LaunchAtLogin.unavailable
+    private(set) var launchAtLoginError: String?
 
     var codeSessions: [AgentSession] = [] { didSet { refreshSessions() } }
     var chatSessions: [AgentSession] = [] { didSet { refreshSessions() } }
@@ -113,6 +117,30 @@ final class NotchModel {
     init(geometry: NotchGeometry, settings: SpectrumSettings = SpectrumSettings()) {
         self.geometry = geometry
         self.settings = settings
+    }
+
+    func refreshLaunchAtLogin() {
+        guard Bundle.main.bundleURL.pathExtension == "app" else {
+            launchAtLogin = .unavailable
+            return
+        }
+        launchAtLogin = LaunchAtLogin(SMAppService.mainApp.status)
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        launchAtLoginError = nil
+        refreshLaunchAtLogin()
+        guard let change = launchAtLogin.change(to: enabled) else { return }
+        defer { refreshLaunchAtLogin() }
+        do {
+            switch change {
+            case .register: try SMAppService.mainApp.register()
+            case .unregister: try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            launchAtLoginError = error.localizedDescription
+            log.error("updating launch at login failed: \(error)")
+        }
     }
 
     var selectedSession: AgentSession? {

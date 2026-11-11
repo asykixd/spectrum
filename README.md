@@ -53,6 +53,8 @@ desks, talk in the meeting room and doze on the sofa.
   other) and an optional first prompt, and opens the session in Terminal.
 - **Conversation**: click a Claude Code or Codex session to read its recent messages and tool
   calls. You can reply to an idle Claude Code session from the panel.
+- **Claude app reply**: hover a Claude chat row and choose **Reply from Spectrum**. Claude must
+  have that chat open, and its composer must be empty before Spectrum can send.
 - **Office**: desks for working agents with screens showing their activity (a page while reading,
   a terminal, a browser, code) and subagents as small interns on the desk, a meeting room where
   you and Claude talk through a chat, a lounge for idle agents. Hover to highlight, click to open.

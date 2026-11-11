@@ -71,6 +71,8 @@ final class NotchModel {
             guard selectedSessionID != oldValue else { return }
             transcript = []
             replyError = nil
+            chatReplyDraft = ""
+            chatReplyError = nil
             if selectedSessionID != nil { newSessionOpen = false }
             onPanelChange()
         }
@@ -78,6 +80,9 @@ final class NotchModel {
     var transcript: [TranscriptMessage] = []
     var replyDraft = ""
     var replyError: String?
+    var chatReplyDraft = ""
+    var chatReplyError: String?
+    var chatReplySending = false
     /// Sessions with a `claude -p --resume` run in flight.
     var replyingSessionIDs: Set<String> = []
     /// Row under the pointer in the sessions list; it reveals the remove button.
@@ -125,6 +130,7 @@ final class NotchModel {
     @ObservationIgnored var onRemoveHooks: (AgentProvider) -> Void = { _ in }
     @ObservationIgnored var onOpenSettings: () -> Void = {}
     @ObservationIgnored var onOpenChat: (AgentSession) -> Void = { _ in }
+    @ObservationIgnored var onChatReply: (String, String) -> Void = { _, _ in }
     @ObservationIgnored var onOpenTerminal: (TerminalTab) -> Void = { _ in }
     @ObservationIgnored var onReply: (String, AgentSession) -> Void = { _, _ in }
     @ObservationIgnored var onStartSession: (String, String?) -> Void = { _, _ in }
@@ -209,6 +215,11 @@ final class NotchModel {
             recentProjects = projects
             if newSessionDirectory == nil { newSessionDirectory = projects.first }
         }
+    }
+
+    func openChatReply(_ session: AgentSession) {
+        guard session.kind == .chat, !settings.privacyMode else { return }
+        selectedSessionID = session.id
     }
 
     func startNewSession() {

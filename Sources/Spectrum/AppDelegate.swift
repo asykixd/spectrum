@@ -109,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onReleasePermissionRequests = { [weak agents] in agents?.releasePermissions() }
         agents.start()
         let chats = ClaudeChatMonitor(model: model)
+        model.onChatReply = { [weak chats] text, id in chats?.reply(text, to: id) }
         chats.start()
         let transcripts = TranscriptMonitor(model: model)
         let boss = BossMonitor(model: model)
@@ -252,7 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hovering = rect.insetBy(dx: -2, dy: -2).contains(pointer)
         if model.isHovering != hovering { model.isHovering = hovering }
         // A half-typed reply keeps the panel open even if the pointer drifts away.
-        let open = model.mode == .agents && model.replyDraft.isEmpty
+        let open = model.mode == .agents && model.replyDraft.isEmpty && model.chatReplyDraft.isEmpty
         if dismissal.update(isOpen: open, isInside: hovering) {
             model.agentsOpen = false
         }

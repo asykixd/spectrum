@@ -52,6 +52,21 @@ public struct ClaudeChatSnapshot: Equatable, Sendable {
     }
 }
 
+public enum ClaudeChatReply {
+    public static func matches(sessionID: String, url: URL?) -> Bool {
+        guard let url, url.scheme == "https", url.host() == "claude.ai",
+            let id = ClaudeChatSnapshot(pageTitle: nil, url: url, buttonLabels: [], texts: [])
+                .chatID
+        else { return false }
+        return sessionID == "claude-chat-\(id)"
+    }
+
+    public static func isSendButton(_ label: String) -> Bool {
+        let text = label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return ["send", "send message", "отправить", "отправить сообщение"].contains(text)
+    }
+}
+
 /// Turns successive snapshots into conversations between the user and Claude.
 ///
 /// Only the chat on screen can be observed. Chats the user switched away from stay listed with

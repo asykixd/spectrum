@@ -3,6 +3,14 @@ import ApplicationServices
 import IOKit.ps
 import SpectrumCore
 
+private enum ChatReplyFailure: String, Sendable {
+    case closed = "Open this chat in Claude first."
+    case busy = "Wait for Claude to finish its current reply."
+    case draftExists = "This chat already has a draft in Claude."
+    case unavailable = "Spectrum couldn't find the chat's editable composer."
+    case draftPlaced = "Check the draft in Claude and send it there."
+}
+
 /// Reads the Claude desktop app's accessibility tree, off the main thread: a long chat has
 /// thousands of nodes.
 private final class ClaudeAppReader: @unchecked Sendable {
@@ -24,6 +32,112 @@ private final class ClaudeAppReader: @unchecked Sendable {
                 continuation.resume(returning: self.read(pid: pid))
             }
         }
+    }
+
+    func reply(_ text: String, to sessionID: String) async -> ChatReplyFailure? {
+        guard AXIsProcessTrusted() else { return .unavailable }
+        guard
+            let app = NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID)
+                .first
+        else { return .closed }
+        let pid = app.processIdentifier
+        return await withCheckedContinuation { continuation in
+            queue.async {
+                continuation.resume(returning: self.send(text, to: sessionID, pid: pid))
+            }
+        }
+    }
+
+    private func send(_ text: String, to sessionID: String, pid: pid_t) -> ChatReplyFailure? {
+        let app = AXUIElementCreateApplication(pid)
+        guard let window = focusedWindow(of: app),
+            let page = chatPage(in: window, sessionID: sessionID)
+        else { return .closed }
+
+        let before = elements(in: page)
+        let buttons = before.filter { $0.1.role == kAXButtonRole }
+            .flatMap { [$0.1.title, $0.1.description].compactMap { $0 } }
+        if ClaudeChatSnapshot(pageTitle: nil, url: nil, buttonLabels: buttons, texts: [])
+            .isGenerating
+        {
+            return .busy
+        }
+        let fields = before.filter { element, node in
+            guard node.role == kAXTextAreaRole else { return false }
+            var editable = DarwinBoolean(false)
+            return AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &editable)
+                == .success && editable.boolValue
+        }
+        guard fields.count == 1, let composer = fields.first?.0,
+            let draft = composerText(composer)
+        else { return .unavailable }
+        guard draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .draftExists
+        }
+        guard focusedWindow(of: app).map({ CFEqual($0, window) }) == true,
+            ClaudeChatReply.matches(sessionID: sessionID, url: value(page, "AXURL") as? URL)
+        else { return .closed }
+        guard
+            AXUIElementSetAttributeValue(composer, kAXValueAttribute as CFString, text as CFString)
+                == .success
+        else { return .unavailable }
+
+        // Let Electron update the enabled state of its Send button after the accessibility edit.
+        Thread.sleep(forTimeInterval: 0.12)
+        guard composerText(composer) == text,
+            focusedWindow(of: app).map({ CFEqual($0, window) }) == true,
+            ClaudeChatReply.matches(sessionID: sessionID, url: value(page, "AXURL") as? URL)
+        else { return .draftPlaced }
+        let sendButtons = elements(in: page).filter { element, node in
+            node.role == kAXButtonRole
+                && [node.title, node.description].compactMap { $0 }.contains(
+                    where: ClaudeChatReply.isSendButton)
+                && (value(element, kAXEnabledAttribute) as? Bool) == true
+        }
+        guard sendButtons.count == 1, let button = sendButtons.first?.0,
+            focusedWindow(of: app).map({ CFEqual($0, window) }) == true,
+            ClaudeChatReply.matches(sessionID: sessionID, url: value(page, "AXURL") as? URL),
+            composerText(composer) == text,
+            AXUIElementPerformAction(button, kAXPressAction as CFString) == .success
+        else { return .draftPlaced }
+        return nil
+    }
+
+    private func focusedWindow(of app: AXUIElement) -> AXUIElement? {
+        let window = value(app, kAXFocusedWindowAttribute) ?? value(app, kAXMainWindowAttribute)
+        guard let window, CFGetTypeID(window) == AXUIElementGetTypeID() else { return nil }
+        return unsafeDowncast(window, to: AXUIElement.self)
+    }
+
+    private func chatPage(in window: AXUIElement, sessionID: String) -> AXUIElement? {
+        var stack = [window]
+        for _ in 0..<Self.nodeLimit {
+            guard let element = stack.popLast() else { return nil }
+            let node = attributes(of: element)
+            if node.role == "AXWebArea",
+                ClaudeChatReply.matches(sessionID: sessionID, url: node.url)
+            {
+                return element
+            }
+            stack.append(contentsOf: node.children.reversed())
+        }
+        return nil
+    }
+
+    private func composerText(_ element: AXUIElement) -> String? {
+        let raw = value(element, kAXValueAttribute)
+        return (raw as? String) ?? (raw as? NSAttributedString)?.string
+    }
+
+    private func elements(in root: AXUIElement) -> [(AXUIElement, Node)] {
+        var stack = [root]
+        var result: [(AXUIElement, Node)] = []
+        while result.count < Self.nodeLimit, let element = stack.popLast() {
+            let node = attributes(of: element)
+            result.append((element, node))
+            stack.append(contentsOf: node.children.reversed())
+        }
+        return result
     }
 
     private func read(pid: pid_t) -> ClaudeChatSnapshot? {
@@ -122,6 +236,24 @@ final class ClaudeChatMonitor {
 
     init(model: NotchModel) {
         self.model = model
+    }
+
+    func reply(_ text: String, to sessionID: String) {
+        guard !model.chatReplySending, !model.settings.privacyMode else { return }
+        model.chatReplySending = true
+        model.chatReplyError = nil
+        Task {
+            let failure = await reader.reply(text, to: sessionID)
+            model.chatReplySending = false
+            guard model.selectedSessionID == sessionID else { return }
+            if let failure {
+                model.chatReplyError = failure.rawValue
+            } else {
+                model.chatReplyDraft = ""
+                model.selectedSessionID = nil
+                tick()
+            }
+        }
     }
 
     func start() {

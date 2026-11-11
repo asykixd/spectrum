@@ -36,7 +36,11 @@ struct AgentsPanelView: View {
                 switch model.tab {
                 case .sessions:
                     if let session = model.selectedSession {
-                        ConversationView(model: model, session: session)
+                        if session.kind == .chat {
+                            ClaudeChatReplyView(model: model, session: session)
+                        } else {
+                            ConversationView(model: model, session: session)
+                        }
                     } else if model.newSessionOpen {
                         NewSessionView(model: model)
                     } else {
@@ -235,6 +239,7 @@ struct SessionsListView: View {
                             }
                         },
                         open: { model.open(session) },
+                        replyChat: { model.openChatReply(session) },
                         openTerminal: {
                             if let tab = session.terminalTab { model.onOpenTerminal(tab) }
                         },
@@ -297,6 +302,7 @@ private struct SessionRow: View {
     let cost: Double?
     let hover: (Bool) -> Void
     let open: () -> Void
+    let replyChat: () -> Void
     let openTerminal: () -> Void
     let dismiss: () -> Void
 
@@ -349,6 +355,17 @@ private struct SessionRow: View {
                     .frame(maxWidth: 200, alignment: .trailing)
             }
             if hovering {
+                if session.kind == .chat {
+                    Button(action: replyChat) {
+                        Image(systemName: "arrowshape.turn.up.left")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 22, height: 22)
+                            .background(Circle().fill(.white.opacity(0.12)))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Reply from Spectrum")
+                    .accessibilityLabel("Reply from Spectrum")
+                }
                 if session.terminalTab != nil {
                     Button(action: openTerminal) {
                         Image(systemName: "terminal")
@@ -399,6 +416,7 @@ private struct SessionRow: View {
         .onHover(perform: hover)
         .contextMenu {
             Button(session.kind == .chat ? "Open in Claude" : "Show Conversation", action: open)
+            if session.kind == .chat { Button("Reply from Spectrum", action: replyChat) }
             if session.terminalTab != nil { Button("Open in Terminal", action: openTerminal) }
             Button("Remove from List", action: dismiss)
         }

@@ -11,7 +11,8 @@ struct SettingsView: View {
                 Toggle(
                     "Launch at login",
                     isOn: Binding(
-                        get: { model.launchAtLogin.isRequested }, set: model.setLaunchAtLogin)
+                        get: { model.launchAtLogin.isRequested },
+                        set: { model.setLaunchAtLogin($0) })
                 )
                 .disabled(model.launchAtLogin == .unavailable)
                 if model.launchAtLogin == .unavailable {

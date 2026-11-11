@@ -96,6 +96,20 @@ struct ExpandedMusicView: View {
     var body: some View {
         VStack(spacing: 0) {
             Color.clear.frame(height: model.geometry.notch.height)
+                .overlay(alignment: .trailing) {
+                    let waiting = model.waitingCount
+                    if waiting > 0 {
+                        let earWidth =
+                            (NotchLayout.expandedSize.width - model.geometry.notch.width) / 2
+                        Label("\(waiting) waiting", systemImage: "bell.badge")
+                            .font(.system(size: 11, weight: .semibold))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .foregroundStyle(Color(hex: 0xF59E0B))
+                            .frame(width: max(0, earWidth - 20), alignment: .trailing)
+                            .padding(.trailing, 20)
+                    }
+                }
             if let track = model.nowPlaying {
                 HStack(alignment: .center, spacing: 14) {
                     ArtworkView(image: model.artwork, size: 84, radius: 14)

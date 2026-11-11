@@ -32,6 +32,14 @@ enum PreviewRenderer {
         let scenes = [
             Scene(name: "compact", music: true),
             Scene(name: "expanded", music: true, hovering: true),
+            Scene(
+                name: "expanded-waiting",
+                sessions: [
+                    agent("b", "billing-api", .waitingForUser),
+                    agent("w", "weather-app", .thinking),
+                    agent("d", "docs-site", .waitingForUser),
+                ],
+                music: true, hovering: true),
             Scene(name: "attention", sessions: [agent("b", "billing-api", .waitingForUser)]),
             Scene(
                 name: "compact-attention", sessions: [agent("b", "billing-api", .waitingForUser)],

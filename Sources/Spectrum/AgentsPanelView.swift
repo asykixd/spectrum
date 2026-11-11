@@ -5,7 +5,6 @@ import SwiftUI
 struct AgentsPanelView: View {
     let model: NotchModel
 
-    private var waiting: Int { model.sessions.filter { $0.activity == .waitingForUser }.count }
     private var working: Int { model.sessions.filter { $0.activity.isWorking }.count }
 
     var body: some View {
@@ -16,7 +15,7 @@ struct AgentsPanelView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer().frame(width: model.geometry.notch.width)
                 HStack(spacing: 12) {
-                    StatusSummary(working: working, waiting: waiting)
+                    StatusSummary(working: working, waiting: model.waitingCount)
                     Button(action: model.openNewSession) {
                         Image(systemName: "plus")
                             .font(.system(size: 12, weight: .bold))

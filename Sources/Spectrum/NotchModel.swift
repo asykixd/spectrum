@@ -38,6 +38,7 @@ final class NotchModel {
     var chatSessions: [AgentSession] = [] { didSet { refreshSessions() } }
     /// What the panel shows: chats first, without the ones the user removed.
     private(set) var sessions: [AgentSession] = []
+    var waitingCount: Int { sessions.filter { $0.activity == .waitingForUser }.count }
     @ObservationIgnored private var dismissals = Dismissals()
 
     /// Code session whose conversation is open in the sessions tab.

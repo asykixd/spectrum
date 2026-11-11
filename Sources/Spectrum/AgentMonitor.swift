@@ -1,3 +1,4 @@
+import ApplicationServices
 import Foundation
 import SpectrumCore
 
@@ -13,6 +14,7 @@ final class AgentMonitor {
     private let model: NotchModel
     private let server = AgentSocketServer(path: SpectrumPaths.agentSocket.path)
     private var store = SessionStore()
+    private var diagnostics = HookDiagnostics()
     private var pruneTimer: Timer?
     /// Permission hooks still waiting for an answer from the island, by session.
     private var pendingPermissions: [String: PendingPermission] = [:]
@@ -69,6 +71,10 @@ final class AgentMonitor {
     }
 
     private func receive(_ payload: Data, reply: AgentSocketReply) {
+        if payload == HookDiagnostics.request {
+            diagnostics.accessibilityGranted = AXIsProcessTrusted()
+            return reply.send(try? JSONEncoder().encode(diagnostics))
+        }
         let event: AgentEvent
         do {
             event = try AgentEvent.decode(payload)
@@ -76,6 +82,7 @@ final class AgentMonitor {
             log.error("bad hook payload: \(error)")
             return reply.send(nil)
         }
+        diagnostics.record(event, at: Date())
         // Claude emits a notification about the same prompt while its permission hook waits.
         if event.kind == .notification, pendingPermissions[event.sessionKey] != nil {
             return reply.send(nil)

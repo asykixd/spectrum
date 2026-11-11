@@ -220,6 +220,7 @@ The app binary doubles as a small CLI:
 | `Spectrum preview <dir>` | Render every state with demo data to PNG files (the screenshots above) |
 | `Spectrum benchmark-usage [record count]` | Time cold, unchanged and append scans on synthetic transcripts |
 | `Spectrum preview-snapshots Tests/PreviewSnapshots.json` | Check the rendered demo views against visual references. Add `--update` after reviewing an intentional change |
+| `Spectrum diag` | Show installed hooks, socket reachability, Accessibility and recent event types |
 
 The binary lives at `/Applications/Spectrum.app/Contents/MacOS/Spectrum`.
 

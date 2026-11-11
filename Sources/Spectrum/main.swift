@@ -93,6 +93,33 @@ case "preview-snapshots":
         }
     }
 
+case "diag":
+    guard arguments.count == 1 else { fail("usage: Spectrum diag") }
+    for provider in AgentProvider.allCases {
+        let installed = HookInstaller.isInstalled(
+            settingsURL: provider.hooksURL, provider: provider)
+        print("\(provider.name) hooks: \(installed ? "installed" : "not installed")")
+    }
+    do {
+        if let diagnostics = try HookDiagnostics.fetch(socketPath: SpectrumPaths.agentSocket.path) {
+            print("Agent socket: reachable")
+            print(
+                "Accessibility: \(diagnostics.accessibilityGranted == true ? "granted" : "unavailable")"
+            )
+            print("Recent hook events: \(diagnostics.events.count)")
+            let formatter = ISO8601DateFormatter()
+            for event in diagnostics.events {
+                print(
+                    "  \(formatter.string(from: event.receivedAt))  \(event.provider)  \(event.name)"
+                )
+            }
+        } else {
+            print("Agent socket: no diagnostic response")
+        }
+    } catch {
+        print("Agent socket diagnostics unavailable: \(error)")
+    }
+
 case nil:
     MainActor.assumeIsolated {
         let app = NSApplication.shared
@@ -104,6 +131,6 @@ case nil:
 
 case let other?:
     fail(
-        "unknown command \(other); expected hook, install-hooks, uninstall-hooks, preview, benchmark-usage or preview-snapshots"
+        "unknown command \(other); expected hook, install-hooks, uninstall-hooks, preview, benchmark-usage, preview-snapshots or diag"
     )
 }

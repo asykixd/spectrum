@@ -42,7 +42,7 @@
 - [x] Reply to the open Claude app chat from the panel via Accessibility
 - [ ] Developer ID signing and notarization once an Apple Developer Program membership is available
 - [ ] Auto-update with Sparkle (after notarization)
-- [ ] `Spectrum diag`: socket, hooks, accessibility and recent events
+- [x] `Spectrum diag`: socket, hooks, accessibility and recent events
 
 ## Done in 1.0.0
 - [x] Dynamic Island behaviour: invisible when idle, compact live activity, expanded player on hover

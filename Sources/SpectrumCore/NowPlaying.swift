@@ -78,7 +78,10 @@ public struct NowPlaying: Equatable, Sendable {
 
     /// AppleScript formats numbers with the user's locale, e.g. "212,5" in Russian.
     private static func number(_ text: String) -> Double {
-        Double(text.replacingOccurrences(of: ",", with: ".")) ?? 0
+        guard let value = Double(text.replacingOccurrences(of: ",", with: ".")),
+            (0...Double(Int32.max)).contains(value)
+        else { return 0 }
+        return value
     }
 
     private static func validURL(_ url: URL) -> URL? {

@@ -158,11 +158,16 @@ public struct UsageLog: Codable, Sendable {
             switch header.type {
             case "assistant":
                 guard let message, let id = message.id, let usage = message.usage,
+                    [
+                        usage.inputTokens, usage.outputTokens, usage.cacheCreationInputTokens,
+                        usage.cacheReadInputTokens, usage.cacheCreation?.ephemeral5mInputTokens,
+                        usage.cacheCreation?.ephemeral1hInputTokens,
+                    ].compactMap({ $0 }).allSatisfy({ (0...Int(Int32.max)).contains($0) }),
                     seen.insert(id).inserted
                 else { return }
                 let write = usage.cacheCreationInputTokens ?? 0
                 let write1h = usage.cacheCreation?.ephemeral1hInputTokens ?? 0
-                let write5m = usage.cacheCreation?.ephemeral5mInputTokens ?? (write - write1h)
+                let write5m = usage.cacheCreation?.ephemeral5mInputTokens ?? max(0, write - write1h)
                 log.entries.append(
                     Entry(
                         messageID: id, date: date, sessionID: sessionID, project: project,

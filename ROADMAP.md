@@ -34,7 +34,7 @@
 - [ ] Automatically follow Focus and screen sharing when supported by the app's capabilities and macOS APIs
 - [x] Pill fallback on displays without a notch
 - [x] Snapshot tests from `preview` renders
-- [ ] Fuzz tests for the transcript, usage, now playing and chat parsers
+- [x] Fuzz tests for the transcript, usage, now playing and chat parsers
 - [ ] Test that `Spectrum hook` exits quickly when the app is down or stuck
 
 ## Later

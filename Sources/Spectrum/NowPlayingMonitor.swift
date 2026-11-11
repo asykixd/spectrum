@@ -133,10 +133,12 @@ final class NowPlayingMonitor {
     private var extraTracks: [NowPlaying] = []
     private var nextExtraSample = Date.distantPast
     /// Full artist lists by Spotify track URI; AppleScript only knows the first artist.
-    private var spotifyArtists: [String: String] = [:]
+    private let spotifyArtists = NSCache<NSString, NSString>()
+    private let mediaCache = MediaDiskCache(directory: SpectrumPaths.mediaCache)
 
     init(model: NotchModel) {
         self.model = model
+        spotifyArtists.countLimit = 128
     }
 
     func start() {
@@ -313,8 +315,8 @@ final class NowPlayingMonitor {
 
     private func apply(_ reported: NowPlaying?) {
         var track = reported
-        if let uri = track?.trackURI, let artists = spotifyArtists[uri] {
-            track?.artist = artists
+        if let uri = track?.trackURI, let artists = spotifyArtists.object(forKey: uri as NSString) {
+            track?.artist = artists as String
         }
         let previous = model.nowPlaying
         if track != previous { model.nowPlaying = track }
@@ -328,7 +330,7 @@ final class NowPlayingMonitor {
             Task { await loadLyrics(for: track) }
         }
         if track.bundleID == "com.spotify.client", let uri = track.trackURI,
-            spotifyArtists[uri] == nil
+            spotifyArtists.object(forKey: uri as NSString) == nil
         {
             Task { await loadSpotifyArtists(uri: uri) }
         }
@@ -340,27 +342,46 @@ final class NowPlayingMonitor {
         else { return }
         let artists = SpotifyEmbed.artists(fromHTML: String(decoding: data, as: UTF8.self))
         guard !artists.isEmpty else { return }
-        spotifyArtists[uri] = artists.joined(separator: ", ")
+        let joined = artists.joined(separator: ", ")
+        spotifyArtists.setObject(joined as NSString, forKey: uri as NSString)
         if model.nowPlaying?.trackURI == uri {
-            model.nowPlaying?.artist = artists.joined(separator: ", ")
+            model.nowPlaying?.artist = joined
         }
     }
 
     private func loadLyrics(for track: NowPlaying) async {
         guard let url = LRCLib.url(for: track) else { return }
+        let key = "lyrics:" + url.absoluteString
+        if let cached = await mediaCache.data(for: key), let lyrics = LRCLib.lyrics(from: cached) {
+            if model.nowPlaying?.isSameTrack(as: track) == true { model.lyrics = lyrics }
+            return
+        }
         var request = URLRequest(url: url)
         // lrclib asks clients to identify themselves.
         request.setValue(
             "Spectrum (https://github.com/asykixd/spectrum)", forHTTPHeaderField: "User-Agent")
         guard let (data, response) = try? await URLSession.shared.data(for: request),
             (response as? HTTPURLResponse)?.statusCode == 200,
-            let lyrics = LRCLib.lyrics(from: data),
-            model.nowPlaying?.isSameTrack(as: track) == true
+            let lyrics = LRCLib.lyrics(from: data)
         else { return }
-        model.lyrics = lyrics
+        if model.nowPlaying?.isSameTrack(as: track) == true { model.lyrics = lyrics }
+        await mediaCache.insert(data, for: key)
     }
 
     private func loadArtwork(for track: NowPlaying) async {
+        let key: String
+        if let url = track.artworkURL {
+            key = "artwork:" + url.absoluteString
+        } else if track.bundleID == "com.apple.Music" {
+            key = ["apple-music-artwork", track.album, track.artist, track.title].joined(
+                separator: "\0")
+        } else {
+            return
+        }
+        if let cached = await mediaCache.data(for: key), let image = NSImage(data: cached) {
+            applyArtwork(image, for: track)
+            return
+        }
         var data: Data?
         if let url = track.artworkURL {
             data = try? await URLSession.shared.data(from: url).0
@@ -374,6 +395,12 @@ final class NowPlayingMonitor {
         guard let data, let image = NSImage(data: data),
             model.nowPlaying?.isSameTrack(as: track) == true
         else { return }
+        applyArtwork(image, for: track)
+        await mediaCache.insert(data, for: key)
+    }
+
+    private func applyArtwork(_ image: NSImage, for track: NowPlaying) {
+        guard model.nowPlaying?.isSameTrack(as: track) == true else { return }
         model.artwork = image
         model.accent = image.accentColor ?? .white
     }

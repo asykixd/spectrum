@@ -24,7 +24,7 @@
 - [x] Poll the pointer slower while it is far from the notch
 - [x] Poll native playback only while paused, and poll extra sources only while their apps are running
 - [x] Rasterize the static office layer and pause it when nothing moves
-- [ ] Bound the Spotify artists cache; cache artwork and lyrics on disk
+- [x] Bound the Spotify artists cache; cache artwork and lyrics on disk
 - [ ] Signposts and a `UsageScanner` benchmark to catch performance regressions
 - [ ] "Always allow" in permission requests, written to the project's `permissions.allow`
 - [ ] Keyboard control: Return allows, Escape denies, arrows move through sessions

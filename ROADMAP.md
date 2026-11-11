@@ -21,7 +21,7 @@
 - [x] Opt-in now playing and play/pause for Safari, Google Chrome, and QuickTime Player
 - [x] Opt-in waveform driven by real audio levels on macOS 14.2 and later
 - [x] Synced lyrics in the expanded player (LRCLIB)
-- [ ] Poll the pointer slower while it is far from the notch
+- [x] Poll the pointer slower while it is far from the notch
 - [ ] Poll now playing only while paused; stop when no player is running
 - [ ] Rasterize the static office layer and pause it when nothing moves
 - [ ] Bound the Spotify artists cache; cache artwork and lyrics on disk

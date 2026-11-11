@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var dismissal = HoverDismissal()
     private var shortcuts: ShortcutMonitor?
     private var hoverTimer: Timer?
+    private var hoverRate: PointerPollRate?
     private var scrollMonitor: Any?
     private var swipe = SwipeDetector()
 
@@ -143,7 +144,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return event
         }
 
-        model.onModeChange = { [weak self] mode in self?.updatePointerTracking(for: mode) }
+        model.onModeChange = { [weak self] mode in
+            self?.updatePointerTracking(for: mode, at: NSEvent.mouseLocation)
+        }
         // Panel-only monitors sleep while it is closed instead of ticking to check.
         model.onPanelChange = { [weak chats, weak transcripts, weak boss] in
             chats?.tick()
@@ -171,29 +174,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// While the island is hidden there is nothing to hover, so the pointer poll stops entirely
     /// and Spectrum stays asleep until music or the shortcut wakes it.
-    private func updatePointerTracking(for mode: NotchMode) {
+    private func updatePointerTracking(for mode: NotchMode, at pointer: CGPoint) {
         if mode == .hidden {
             hoverTimer?.invalidate()
             hoverTimer = nil
-            tick()
+            hoverRate = nil
+            tick(at: pointer)
             return
         }
-        guard hoverTimer == nil else { return }
-        let timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20, repeats: true) {
+        guard let model else { return }
+        let rect = NotchLayout.visibleRect(
+            for: mode, geometry: model.geometry, lyrics: model.lyrics != nil)
+        let rate = PointerPollRate.resolve(pointer: pointer, island: rect, previous: hoverRate)
+        guard hoverRate != rate else { return }
+        hoverTimer?.invalidate()
+        let timer = Timer.scheduledTimer(withTimeInterval: rate.interval, repeats: true) {
             [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let pointer = NSEvent.mouseLocation
+                self.tick(at: pointer)
+                if let mode = self.model?.mode, mode != .hidden {
+                    self.updatePointerTracking(for: mode, at: pointer)
+                }
+            }
         }
-        timer.tolerance = 0.01
+        timer.tolerance = rate.tolerance
         hoverTimer = timer
+        hoverRate = rate
     }
 
     /// Polls the pointer instead of using tracking areas: the panel ignores mouse events while
     /// compact so clicks reach the menu bar underneath.
-    private func tick() {
+    private func tick(at pointer: CGPoint) {
         guard let model, let panel else { return }
         let rect = NotchLayout.visibleRect(
             for: model.mode, geometry: model.geometry, lyrics: model.lyrics != nil)
-        let hovering = rect.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation)
+        let hovering = rect.insetBy(dx: -2, dy: -2).contains(pointer)
         if model.isHovering != hovering { model.isHovering = hovering }
         // A half-typed reply keeps the panel open even if the pointer drifts away.
         let open = model.mode == .agents && model.replyDraft.isEmpty

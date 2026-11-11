@@ -35,7 +35,7 @@
 - [x] Pill fallback on displays without a notch
 - [x] Snapshot tests from `preview` renders
 - [x] Fuzz tests for the transcript, usage, now playing and chat parsers
-- [ ] Test that `Spectrum hook` exits quickly when the app is down or stuck
+- [x] Test that `Spectrum hook` exits quickly when the app is down or stuck
 
 ## Later
 - [ ] Cursor and GitHub Copilot agents

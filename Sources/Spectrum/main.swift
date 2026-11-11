@@ -28,22 +28,9 @@ case "hook":
     let input = FileHandle.standardInput.readDataToEndOfFile()
     let provider = arguments.dropFirst().first.flatMap(AgentProvider.init(rawValue:)) ?? .claude
     let terminalTab = TerminalTab.capture(environment: ProcessInfo.processInfo.environment)
-    guard
-        let payload = try? AgentEvent.forwardedPayload(
-            input, from: provider, terminalTab: terminalTab),
-        let event = try? AgentEvent.decode(payload)
-    else { exit(0) }
-    let path = SpectrumPaths.agentSocket.path
-    if event.kind == .permissionRequest {
-        let wait = TimeInterval(HookInstaller.permissionWait)
-        if let answer = try? AgentSocket.request(payload, to: path, timeout: wait),
-            !answer.isEmpty
-        {
-            FileHandle.standardOutput.write(answer)
-        }
-    } else {
-        try? AgentSocket.send(payload, to: path)
-    }
+    let answer = HookForwarder.run(
+        input, from: provider, terminalTab: terminalTab, socketPath: SpectrumPaths.agentSocket.path)
+    if !answer.isEmpty { FileHandle.standardOutput.write(answer) }
     exit(0)
 
 case "install-hooks":

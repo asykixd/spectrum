@@ -10,46 +10,54 @@ public enum AgentSocketError: Error, Equatable {
 /// One connection carries one hook payload. A plain send closes it right away; a request
 /// half-closes it and waits for the app's answer.
 public enum AgentSocket {
-    /// Delivers `payload` to the app. Fails fast when the app isn't running.
+    private static let maximumReply = 64 * 1024
+    fileprivate static let maximumPayload = 4 * 1024 * 1024
+
+    /// Delivers one event within a single deadline, even when a peer stops reading.
     public static func send(_ payload: Data, to path: String, timeout: TimeInterval = 1) throws {
-        let fd = try connected(to: path, timeout: timeout)
+        let deadline = Deadline(seconds: timeout)
+        let fd = try connected(to: path, deadline: deadline)
         defer { close(fd) }
-        try write(payload, to: fd)
+        try write(payload, to: fd, deadline: deadline, maximum: maximumPayload)
     }
 
-    /// Delivers `payload` and returns the app's answer, empty when the app has none or doesn't
-    /// answer within `timeout`.
+    /// Delivers a request and returns a complete reply, or empty data on a reply timeout.
     public static func request(_ payload: Data, to path: String, timeout: TimeInterval) throws
         -> Data
     {
-        let fd = try connected(to: path, timeout: 1)
+        let sendDeadline = Deadline(seconds: 1)
+        let fd = try connected(to: path, deadline: sendDeadline)
         defer { close(fd) }
-        try write(payload, to: fd)
+        try write(payload, to: fd, deadline: sendDeadline, maximum: maximumPayload)
         shutdown(fd, SHUT_WR)
-        try setTimeout(fd, option: SO_RCVTIMEO, seconds: timeout)
-        var answer = Data()
-        var buffer = [UInt8](repeating: 0, count: 4096)
-        while true {
-            let count = read(fd, &buffer, buffer.count)
-            guard count > 0 else { break }
-            answer.append(buffer, count: count)
+        do {
+            return try readAll(fd, deadline: Deadline(seconds: timeout), maximum: maximumReply)
+        } catch AgentSocketError.system(_, ETIMEDOUT) {
+            return Data()
         }
-        return answer
     }
 
-    private static func connected(to path: String, timeout: TimeInterval) throws -> Int32 {
+    private static func connected(to path: String, deadline: Deadline) throws -> Int32 {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { throw AgentSocketError.system("socket", errno) }
         do {
-            preventSigPipe(fd)
-            try setTimeout(fd, option: SO_SNDTIMEO, seconds: timeout)
+            try prepare(fd)
             var address = try makeAddress(path)
-            let connected = withUnsafePointer(to: &address) {
+            let result = withUnsafePointer(to: &address) {
                 $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
                     connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
                 }
             }
-            guard connected == 0 else { throw AgentSocketError.system("connect", errno) }
+            if result != 0 {
+                guard errno == EINPROGRESS else { throw AgentSocketError.system("connect", errno) }
+                try deadline.wait(for: Int16(POLLOUT), fd: fd)
+                var error: Int32 = 0
+                var length = socklen_t(MemoryLayout<Int32>.size)
+                guard getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &length) == 0 else {
+                    throw AgentSocketError.system("getsockopt", errno)
+                }
+                guard error == 0 else { throw AgentSocketError.system("connect", error) }
+            }
             return fd
         } catch {
             close(fd)
@@ -57,19 +65,65 @@ public enum AgentSocket {
         }
     }
 
-    static func preventSigPipe(_ fd: Int32) {
+    fileprivate static func prepare(_ fd: Int32) throws {
         var on: Int32 = 1
         setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
+        guard fcntl(fd, F_SETFL, O_NONBLOCK) >= 0 else {
+            throw AgentSocketError.system("fcntl", errno)
+        }
     }
 
-    static func write(_ payload: Data, to fd: Int32) throws {
+    fileprivate static func write(
+        _ payload: Data, to fd: Int32, deadline: Deadline, maximum: Int = maximumReply
+    ) throws {
+        guard payload.count <= maximum else { throw AgentSocketError.system("write", EMSGSIZE) }
         try payload.withUnsafeBytes { buffer in
             guard let base = buffer.baseAddress else { return }
             var offset = 0
             while offset < buffer.count {
+                try deadline.wait(for: Int16(POLLOUT), fd: fd)
                 let written = Darwin.write(fd, base + offset, buffer.count - offset)
+                if written < 0, errno == EAGAIN || errno == EINTR { continue }
                 guard written > 0 else { throw AgentSocketError.system("write", errno) }
                 offset += written
+            }
+        }
+    }
+
+    fileprivate static func readAll(_ fd: Int32, deadline: Deadline, maximum: Int) throws -> Data {
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 16 * 1024)
+        while true {
+            try deadline.wait(for: Int16(POLLIN), fd: fd)
+            let count = read(fd, &buffer, buffer.count)
+            if count == 0 { return data }
+            if count < 0, errno == EAGAIN || errno == EINTR { continue }
+            guard count > 0 else { throw AgentSocketError.system("read", errno) }
+            guard count <= maximum - data.count else {
+                throw AgentSocketError.system("read", EMSGSIZE)
+            }
+            data.append(buffer, count: count)
+        }
+    }
+
+    fileprivate struct Deadline {
+        private let end: UInt64
+
+        init(seconds: TimeInterval) {
+            let finite = seconds.isFinite ? min(max(seconds, 0), 3_600) : 0
+            end = DispatchTime.now().uptimeNanoseconds + UInt64(finite * 1_000_000_000)
+        }
+
+        func wait(for events: Int16, fd: Int32) throws {
+            var event = pollfd(fd: fd, events: events, revents: 0)
+            while true {
+                let now = DispatchTime.now().uptimeNanoseconds
+                guard end > now else { throw AgentSocketError.system("poll", ETIMEDOUT) }
+                let remaining = Int32((end - now + 999_999) / 1_000_000)
+                let result = poll(&event, 1, remaining)
+                if result > 0 { return }
+                if result == 0 { throw AgentSocketError.system("poll", ETIMEDOUT) }
+                if errno != EINTR { throw AgentSocketError.system("poll", errno) }
             }
         }
     }
@@ -86,12 +140,6 @@ public enum AgentSocket {
         return address
     }
 
-    static func setTimeout(_ fd: Int32, option: Int32, seconds: TimeInterval) throws {
-        var value = timeval(
-            tv_sec: Int(seconds), tv_usec: Int32((seconds - Double(Int(seconds))) * 1_000_000))
-        guard setsockopt(fd, SOL_SOCKET, option, &value, socklen_t(MemoryLayout<timeval>.size)) == 0
-        else { throw AgentSocketError.system("setsockopt", errno) }
-    }
 }
 
 /// The open connection of one hook payload. Answering closes it; so does dropping it.
@@ -116,7 +164,7 @@ public final class AgentSocketReply: @unchecked Sendable {
             })
         else { return }
         // The hook may have given up already; then there is nobody left to tell.
-        if let answer { try? AgentSocket.write(answer, to: fd) }
+        if let answer { try? AgentSocket.write(answer, to: fd, deadline: .init(seconds: 0.25)) }
         close(fd)
     }
 }
@@ -137,6 +185,7 @@ public final class AgentSocketServer: @unchecked Sendable {
     }
 
     public func start(handler: @escaping @Sendable (Data, AgentSocketReply) -> Void) throws {
+        var address = try AgentSocket.makeAddress(path)
         try FileManager.default.createDirectory(
             atPath: (path as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
         // A stale socket file from a previous run would make bind fail.
@@ -144,7 +193,6 @@ public final class AgentSocketServer: @unchecked Sendable {
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { throw AgentSocketError.system("socket", errno) }
-        var address = try AgentSocket.makeAddress(path)
         let bound = withUnsafePointer(to: &address) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
                 bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
@@ -155,17 +203,22 @@ public final class AgentSocketServer: @unchecked Sendable {
             throw AgentSocketError.system("bind", errno)
         }
         guard listen(fd, 64) == 0 else {
+            let failure = errno
             close(fd)
-            throw AgentSocketError.system("listen", errno)
+            unlink(path)
+            throw AgentSocketError.system("listen", failure)
         }
 
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
         source.setEventHandler {
             let client = accept(fd, nil, nil)
             guard client >= 0 else { return }
-            AgentSocket.preventSigPipe(client)
             let reply = AgentSocketReply(fd: client)
-            guard let payload = Self.readAll(client), !payload.isEmpty else {
+            guard (try? AgentSocket.prepare(client)) != nil,
+                let payload = try? AgentSocket.readAll(
+                    client, deadline: .init(seconds: 1), maximum: AgentSocket.maximumPayload),
+                !payload.isEmpty
+            else {
                 reply.send(nil)
                 return
             }
@@ -177,24 +230,10 @@ public final class AgentSocketServer: @unchecked Sendable {
     }
 
     public func stop() {
-        source?.cancel()
-        source = nil
+        guard let source else { return }
+        source.cancel()
+        self.source = nil
         unlink(path)
     }
 
-    private static func readAll(_ fd: Int32) -> Data? {
-        // A stuck sender must not block the accept loop. macOS rejects the option with EINVAL
-        // once the peer has already closed, which is fine: reads then hit EOF immediately.
-        try? AgentSocket.setTimeout(fd, option: SO_RCVTIMEO, seconds: 1)
-        var data = Data()
-        var buffer = [UInt8](repeating: 0, count: 16 * 1024)
-        while true {
-            let count = read(fd, &buffer, buffer.count)
-            if count > 0 {
-                data.append(buffer, count: count)
-            } else {
-                return count == 0 ? data : nil
-            }
-        }
-    }
 }

@@ -132,7 +132,9 @@ struct ExpandedMusicView: View {
                             }
                         }
                         ProgressRow(track: track, accent: model.accent)
-                        Controls(isPlaying: track.isPlaying, send: model.perform)
+                        Controls(
+                            isPlaying: track.isPlaying, canSkipTracks: track.canSkipTracks,
+                            send: model.perform)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -223,13 +225,18 @@ private struct ProgressRow: View {
 
 private struct Controls: View {
     let isPlaying: Bool
+    let canSkipTracks: Bool
     let send: (MediaCommand) -> Void
 
     var body: some View {
         HStack(spacing: 28) {
             button("backward.fill", size: 16) { send(.previousTrack) }
+                .disabled(!canSkipTracks)
+                .opacity(canSkipTracks ? 1 : 0.3)
             button(isPlaying ? "pause.fill" : "play.fill", size: 22) { send(.togglePlayPause) }
             button("forward.fill", size: 16) { send(.nextTrack) }
+                .disabled(!canSkipTracks)
+                .opacity(canSkipTracks ? 1 : 0.3)
         }
         .frame(maxWidth: .infinity)
     }

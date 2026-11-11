@@ -17,23 +17,23 @@ private final class ScriptRunner: @unchecked Sendable {
     private var cache: [String: NSAppleScript] = [:]
 
     @discardableResult
-    func run(_ source: String) async -> Output {
+    func run(_ source: String, cacheScript: Bool = true) async -> Output {
         await withCheckedContinuation { continuation in
             queue.async {
-                let result = self.execute(source)
+                let result = self.execute(source, cacheScript: cacheScript)
                 continuation.resume(
                     returning: Output(string: result?.stringValue, data: result?.data))
             }
         }
     }
 
-    private func execute(_ source: String) -> NSAppleEventDescriptor? {
+    private func execute(_ source: String, cacheScript: Bool) -> NSAppleEventDescriptor? {
         let script = cache[source] ?? NSAppleScript(source: source)
-        cache[source] = script
+        if cacheScript { cache[source] = script }
         var error: NSDictionary?
         let result = script?.executeAndReturnError(&error)
         if let error {
-            log.debug("applescript failed: \(error, privacy: .public)")
+            log.debug("applescript failed: \(error)")
         }
         return result
     }
@@ -87,7 +87,37 @@ private let players = [
     ),
 ]
 
-/// Feeds the model with the current track from Spotify and Apple Music.
+private enum QuickTimeMedia {
+    static let bundleID = "com.apple.QuickTimePlayerX"
+    static let sample = """
+        tell application "/System/Applications/QuickTime Player.app"
+            if not (exists front window) then return ""
+            set movieWindow to front window
+            set movieDocument to document of movieWindow
+            if duration of movieDocument is not greater than 0 then return ""
+            set stateName to "paused"
+            if playing of movieDocument then set stateName to "playing"
+            return stateName & tab & (name of movieDocument) & tab & tab & tab & (duration of movieDocument as text) & tab & (current time of movieDocument as text) & tab & tab & (id of movieWindow as text)
+        end tell
+        """
+
+    static func toggle(window: String?) -> String? {
+        guard let window, let id = Int(window), id > 0 else { return nil }
+        return """
+            tell application "/System/Applications/QuickTime Player.app"
+                if not (exists window id \(id)) then return
+                set movieDocument to document of window id \(id)
+                if playing of movieDocument then
+                    pause movieDocument
+                else
+                    play movieDocument
+                end if
+            end tell
+            """
+    }
+}
+
+/// Feeds the model with the current track from the configured playback sources.
 ///
 /// MediaRemote would cover every player, but since macOS 15.4 it ignores third-party apps, so
 /// Spectrum asks the players directly. That needs Automation permission per player.
@@ -98,6 +128,9 @@ final class NowPlayingMonitor {
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
     private var refreshing = false
+    private var refreshPending = false
+    private var extraTracks: [NowPlaying] = []
+    private var nextExtraSample = Date.distantPast
     /// Full artist lists by Spotify track URI; AppleScript only knows the first artist.
     private var spotifyArtists: [String: String] = [:]
 
@@ -125,21 +158,49 @@ final class NowPlayingMonitor {
     }
 
     func send(_ command: MediaCommand) {
-        guard let bundleID = model.nowPlaying?.bundleID,
-            let player = players.first(where: { $0.bundleID == bundleID }),
+        guard let track = model.nowPlaying, Self.isRunning(track.bundleID) else { return }
+        let script: String
+        if let player = players.first(where: { $0.bundleID == track.bundleID }),
             let verb = player.commands[command]
-        else { return }
+        {
+            script = "tell application id \"\(track.bundleID)\" to \(verb)"
+        } else {
+            guard command == .togglePlayPause, model.settings.showExtraPlayers else { return }
+            let source = BrowserMedia.allCases.first { $0.bundleID == track.bundleID }
+            if let source, let token = track.browserToken,
+                let url = Self.runningApplication(track.bundleID)?.bundleURL,
+                let toggle = source.toggleScript(token: token, applicationURL: url)
+            {
+                script = toggle
+            } else if track.bundleID == QuickTimeMedia.bundleID,
+                let toggle = QuickTimeMedia.toggle(window: track.trackURI)
+            {
+                script = toggle
+            } else {
+                return
+            }
+        }
         Task {
-            await runner.run("tell application id \"\(bundleID)\" to \(verb)")
+            await runner.run(script, cacheScript: track.canSkipTracks)
+            nextExtraSample = .distantPast
             refresh()
         }
     }
 
     private func refresh() {
-        guard !refreshing else { return }
+        guard !refreshing else {
+            refreshPending = true
+            return
+        }
         refreshing = true
         Task {
-            defer { refreshing = false }
+            defer {
+                refreshing = false
+                if refreshPending {
+                    refreshPending = false
+                    refresh()
+                }
+            }
             var tracks: [NowPlaying] = []
             for player in players where player.isRunning {
                 let output = await runner.run(player.stateScript).string ?? ""
@@ -149,8 +210,51 @@ final class NowPlayingMonitor {
                     tracks.append(track)
                 }
             }
-            apply(tracks.first(where: \.isPlaying) ?? tracks.first)
+            if model.settings.showMusic && model.settings.showExtraPlayers {
+                if !tracks.contains(where: \.isPlaying), Date() >= nextExtraSample {
+                    extraTracks = await sampleExtraPlayers()
+                    nextExtraSample = Date().addingTimeInterval(6)
+                }
+                if model.settings.showExtraPlayers {
+                    tracks += extraTracks.filter { Self.isRunning($0.bundleID) }
+                }
+            } else {
+                extraTracks = []
+                nextExtraSample = .distantPast
+            }
+            let previous = model.nowPlaying
+            apply(
+                tracks.first(where: \.isPlaying)
+                    ?? tracks.first { $0.isSameTrack(as: previous) } ?? tracks.first)
         }
+    }
+
+    private func sampleExtraPlayers() async -> [NowPlaying] {
+        var tracks: [NowPlaying] = []
+        if Self.isRunning(QuickTimeMedia.bundleID),
+            let output = await runner.run(QuickTimeMedia.sample).string,
+            let track = NowPlaying.parse(
+                scriptOutput: output, bundleID: QuickTimeMedia.bundleID, sampledAt: Date())
+        {
+            tracks.append(track)
+        }
+        for browser in BrowserMedia.allCases {
+            if let url = Self.runningApplication(browser.bundleID)?.bundleURL,
+                let output = await runner.run(browser.sampleScript(applicationURL: url)).string,
+                let track = browser.parse(output, sampledAt: Date())
+            {
+                tracks.append(track)
+            }
+        }
+        return tracks
+    }
+
+    private static func isRunning(_ bundleID: String) -> Bool {
+        runningApplication(bundleID) != nil
+    }
+
+    private static func runningApplication(_ bundleID: String) -> NSRunningApplication? {
+        NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first
     }
 
     private func apply(_ reported: NowPlaying?) {
@@ -165,11 +269,13 @@ final class NowPlayingMonitor {
         model.accent = .white
         model.lyrics = nil
         Task { await loadArtwork(for: track) }
-        if model.settings.showLyrics {
+        if track.canSkipTracks && model.settings.showLyrics {
             // The player's own artist field: featured artists added later would miss the match.
             Task { await loadLyrics(for: track) }
         }
-        if let uri = track.trackURI, spotifyArtists[uri] == nil {
+        if track.bundleID == "com.spotify.client", let uri = track.trackURI,
+            spotifyArtists[uri] == nil
+        {
             Task { await loadSpotifyArtists(uri: uri) }
         }
     }

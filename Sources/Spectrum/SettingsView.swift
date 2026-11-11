@@ -31,6 +31,11 @@ struct SettingsView: View {
             }
             Section("Notch") {
                 Toggle("Show music while it plays", isOn: $model.settings.showMusic)
+                Toggle(isOn: $model.settings.showExtraPlayers) {
+                    Text("Show playback from browsers and QuickTime")
+                    Text("Safari and Chrome require Allow JavaScript from Apple Events.")
+                }
+                .disabled(!model.settings.showMusic)
                 Toggle(isOn: $model.settings.showLyrics) {
                     Text("Show synced lyrics in the expanded player")
                     Text("Looks up the playing track's title and artist on lrclib.net.")

@@ -18,7 +18,7 @@
 
 ## Next
 - [x] Track local Codex sessions in the list and pixel office, with transcripts and approvals
-- [ ] Browsers and other players in now playing (MediaRemote ignores third-party apps since macOS 15.4)
+- [x] Opt-in now playing and play/pause for Safari, Google Chrome, and QuickTime Player
 - [ ] Waveform driven by real audio levels instead of an animation
 - [x] Synced lyrics in the expanded player (LRCLIB)
 - [ ] Poll the pointer slower while it is far from the notch

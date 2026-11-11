@@ -33,7 +33,9 @@ desks, talk in the meeting room and doze on the sofa.
 - Hover to expand: title, every featured artist, progress, previous / play-pause / next, and the
   line being sung when [lrclib.net](https://lrclib.net) has synced lyrics for the track.
 - Two-finger swipe across the player changes the track.
-- Spotify and Apple Music.
+- Spotify and Apple Music. Enable browser and QuickTime playback in Settings for Safari, Google
+  Chrome and QuickTime Player. These extra sources support play/pause. Safari and Chrome need
+  **Allow JavaScript from Apple Events**, and browser playback requires HTML media in the page.
 
 <img src="docs/screenshots/expanded.png" width="470" alt="Expanded player">
 
@@ -123,6 +125,7 @@ macOS asks once for each:
 | --- | --- |
 | Accessibility | The double-tap shortcut and <kbd>Esc</kbd> system-wide; reading chat state from the Claude app |
 | Automation → Spotify / Music | Reading the current track and sending play, pause, next, previous |
+| Automation → Safari / Google Chrome / QuickTime Player | Reading playback and toggling play/pause when extra sources are enabled |
 | Automation → Terminal | Starting Claude Code and focusing agent sessions in Terminal |
 
 Spectrum is signed ad hoc, so macOS may ask again after an update.
@@ -135,6 +138,7 @@ The gear in the agents panel opens Settings, installs or removes the hooks and q
 | --- | --- |
 | Launch at login | Off |
 | Show music while it plays | On |
+| Show playback from browsers and QuickTime | Off |
 | Show synced lyrics in the expanded player | On |
 | Blink when an agent needs permission or an answer | On |
 | Flash a checkmark when a task finishes | On |

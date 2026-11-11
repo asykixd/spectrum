@@ -14,11 +14,17 @@ public struct NowPlaying: Equatable, Sendable {
     public var artworkURL: URL?
     /// Player-specific track id, e.g. `spotify:track:6sdT…`.
     public var trackURI: String?
+    public var browserToken: String?
+
+    public var canSkipTracks: Bool {
+        browserToken == nil && bundleID != "com.apple.QuickTimePlayerX"
+    }
 
     public init(
         title: String, artist: String, album: String = "", duration: TimeInterval = 0,
         elapsed: TimeInterval = 0, sampledAt: Date = .distantPast, isPlaying: Bool,
-        bundleID: String, artworkURL: URL? = nil, trackURI: String? = nil
+        bundleID: String, artworkURL: URL? = nil, trackURI: String? = nil,
+        browserToken: String? = nil
     ) {
         self.title = title
         self.artist = artist
@@ -30,6 +36,7 @@ public struct NowPlaying: Equatable, Sendable {
         self.bundleID = bundleID
         self.artworkURL = artworkURL
         self.trackURI = trackURI
+        self.browserToken = browserToken
     }
 
     /// Parses the tab-separated line produced by Spectrum's player scripts:
@@ -57,6 +64,7 @@ public struct NowPlaying: Equatable, Sendable {
     /// Same track, ignoring playback position: used to avoid refetching artwork.
     public func isSameTrack(as other: NowPlaying?) -> Bool {
         guard let other else { return false }
+        guard browserToken == other.browserToken else { return false }
         if let trackURI, let otherURI = other.trackURI { return trackURI == otherURI }
         return title == other.title && artist == other.artist && album == other.album
             && bundleID == other.bundleID
@@ -115,7 +123,7 @@ public enum SpotifyEmbed {
     }
 }
 
-public enum MediaCommand: Sendable {
+public enum MediaCommand: Equatable, Sendable {
     case togglePlayPause
     case nextTrack
     case previousTrack

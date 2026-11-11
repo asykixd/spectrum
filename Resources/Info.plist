@@ -25,6 +25,6 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSAppleEventsUsageDescription</key>
-    <string>Spectrum controls playback in Spotify and Apple Music and opens or focuses agent sessions in Terminal.</string>
+    <string>Spectrum reads and controls playback in your music apps and enabled browsers and opens or focuses agent sessions in Terminal.</string>
 </dict>
 </plist>
